@@ -41,11 +41,18 @@ export default function PinGate({
   if (unlocked) return <>{children}</>;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center p-6">
-      <Card>
-        <h1 className="text-lg font-bold">Personeelstoegang</h1>
-        <p className="mt-1 text-sm text-stone-500">
-          Voer de pincode in voor het {role}. (Demo-standaard: 1234)
+    <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center p-6">
+      <Card className="animate-fade-in">
+        <div className="text-center mb-4">
+          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-dark-700 border border-hapas-500/20 text-2xl">
+            🔒
+          </div>
+        </div>
+        <h1 className="text-lg font-display font-bold text-cream-200 text-center">
+          Personeelstoegang
+        </h1>
+        <p className="mt-1 text-sm text-cream-500 text-center">
+          Voer de pincode in voor het {role}.
         </p>
         <input
           value={pin}
@@ -56,11 +63,11 @@ export default function PinGate({
           onKeyDown={(e) => e.key === "Enter" && tryUnlock()}
           inputMode="numeric"
           autoFocus
-          className="mt-4 w-full rounded-xl border border-stone-300 p-3 text-center text-2xl tracking-[0.5em]"
+          className="mt-4 w-full rounded-2xl border border-dark-600/50 bg-dark-700 p-3 text-center text-2xl tracking-[0.5em] text-cream-200 placeholder:text-cream-500/40 focus:border-hapas-500/50 focus:outline-none transition"
           placeholder="••••"
         />
         {error && (
-          <p className="mt-2 text-sm font-semibold text-red-600">
+          <p className="mt-2 text-sm font-semibold text-red-400 text-center">
             Onjuiste pincode.
           </p>
         )}

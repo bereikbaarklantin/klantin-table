@@ -219,7 +219,17 @@ class MockAdapter implements DataAPI {
 
   // --- Bestellingen ---------------------------------------------------------
 
+  private _lastOrderKey: string | null = null;
+
   async submitOrder(input: SubmitOrderInput): Promise<SubmitOrderResult> {
+    const itemsHash = JSON.stringify(input.items.map(i => `${i.productId}:${i.qty}`).sort());
+    const orderKey = `${input.sessionId}:${itemsHash}`;
+    if (orderKey === this._lastOrderKey) {
+      return { ok: false, errors: ["Deze bestelling is al verzonden. Wacht even."] };
+    }
+    this._lastOrderKey = orderKey;
+    setTimeout(() => { if (this._lastOrderKey === orderKey) this._lastOrderKey = null; }, 5000);
+
     const db = this.db();
     const session = db.sessions.find((s) => s.id === input.sessionId);
     if (!session) return { ok: false, errors: ["Sessie niet gevonden."] };

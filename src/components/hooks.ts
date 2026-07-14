@@ -11,11 +11,13 @@ export function useLive<T>(
   fetcher: () => Promise<T>,
   deps: unknown[] = [],
   pollMs = 8000
-): { data: T | null; refresh: () => void; loading: boolean } {
+): { data: T | null; refresh: () => void; loading: boolean; error: string | null } {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const fetcherRef = useRef(fetcher);
   fetcherRef.current = fetcher;
+  const retryCount = useRef(0);
 
   const refresh = useCallback(() => {
     fetcherRef
@@ -23,8 +25,16 @@ export function useLive<T>(
       .then((d) => {
         setData(d);
         setLoading(false);
+        setError(null);
+        retryCount.current = 0;
       })
-      .catch(() => setLoading(false));
+      .catch((err) => {
+        setLoading(false);
+        retryCount.current += 1;
+        if (retryCount.current >= 3) {
+          setError(err?.message ?? "Laden mislukt");
+        }
+      });
   }, []);
 
   useEffect(() => {
@@ -38,7 +48,7 @@ export function useLive<T>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
-  return { data, refresh, loading };
+  return { data, refresh, loading, error };
 }
 
 /** Tikt elke seconde — voor timers en "x min geleden"-weergave. */
@@ -93,4 +103,29 @@ export function useNewItemSignal(ids: string[], onNew: () => void) {
     if (fresh) onNew();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ids.join("|")]);
+}
+
+
+/** Realtime connection status (supabase mode only). */
+export function useConnectionStatus(): "connected" | "disconnected" | "connecting" | "polling" {
+  const [status, setStatus] = useState<"connected" | "disconnected" | "connecting" | "polling">(
+    store.mode === "demo" ? "polling" : "connecting"
+  );
+
+  useEffect(() => {
+    if (store.mode !== "supabase") {
+      setStatus("polling");
+      return;
+    }
+    // Access the supabase adapter's status method
+    const adapter = store as any;
+    if (typeof adapter.onStatusChange === "function") {
+      return adapter.onStatusChange((s: "connected" | "disconnected" | "connecting") => {
+        setStatus(s);
+      });
+    }
+    setStatus("polling");
+  }, []);
+
+  return status;
 }

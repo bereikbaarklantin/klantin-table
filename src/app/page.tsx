@@ -17,28 +17,28 @@ const SCREENS = [
     emoji: "👨‍🍳",
     title: "Keuken (KDS)",
     desc: "Keukenscherm — nieuwe bestellingen accepteren, bereiden, gereedmelden.",
-    color: "bg-amber-50 border-amber-200",
+    accent: "border-amber-500/30 hover:border-amber-500/60",
   },
   {
     href: "/service",
     emoji: "🤵",
     title: "Bediening",
     desc: "Drankbestellingen, gerechten gereed, tafelverzoeken, tafels sluiten.",
-    color: "bg-sky-50 border-sky-200",
+    accent: "border-sky-500/30 hover:border-sky-500/60",
   },
   {
     href: "/manager",
     emoji: "📊",
     title: "Manager",
     desc: "KPI's, omzet, instellingen, reviewfeedback, menubeschikbaarheid.",
-    color: "bg-emerald-50 border-emerald-200",
+    accent: "border-emerald-500/30 hover:border-emerald-500/60",
   },
   {
     href: "/admin",
     emoji: "⚙️",
     title: "Admin (SaaS)",
     desc: "Platformbeheer — restaurants toevoegen, commissie-inzicht, abonnementen.",
-    color: "bg-violet-50 border-violet-200",
+    accent: "border-violet-500/30 hover:border-violet-500/60",
   },
 ];
 
@@ -53,36 +53,36 @@ export default function HomePage() {
   return (
     <main className="mx-auto min-h-screen max-w-3xl p-6">
       {/* Header */}
-      <header className="text-center">
+      <header className="text-center animate-fade-in">
         <div className="text-5xl">🥘</div>
-        <h1 className="mt-2 text-3xl font-black text-hapas-800">
+        <h1 className="mt-2 text-3xl font-display font-black text-cream-200">
           Bestelsysteem SaaS
         </h1>
-        <p className="mt-1 text-stone-500 font-semibold">
+        <p className="mt-1 text-cream-500 font-semibold">
           Digitaal bestelsysteem voor restaurants
         </p>
-        <Badge tone="hapas">
+        <Badge tone="gold">
           {slug === "DEMO" ? "demo-modus" : "productie"}
         </Badge>
       </header>
 
       {/* Info */}
-      <Card className="mt-6 bg-hapas-50/60">
-        <p className="text-sm text-hapas-900">
-          <strong>Hoe werkt de demo?</strong> Open een tafelnummer hieronder
+      <Card className="mt-6">
+        <p className="text-sm text-cream-300">
+          <strong className="text-cream-200">Hoe werkt de demo?</strong> Open een tafelnummer hieronder
           op je telefoon (of in een nieuw tabblad) om de gast-ervaring te
           testen. Open de keuken-, bedienings- en managerschermen in aparte
           tabbladen om het volledige systeem te zien. Alle schermen werken
           realtime samen via lokale opslag — geen backend nodig.
         </p>
-        <p className="mt-2 text-xs text-hapas-700">
-          Pincode personeel: <code className="font-mono font-bold">1234</code>{" "}
+        <p className="mt-2 text-xs text-cream-500">
+          Pincode personeel: <code className="rounded bg-dark-700 px-1.5 py-0.5 font-mono font-bold text-hapas-400">1234</code>{" "}
           (aanpasbaar in het managerscherm)
         </p>
       </Card>
 
       {/* Personeelsschermen */}
-      <h2 className="mt-8 text-lg font-black text-stone-700">
+      <h2 className="mt-8 text-lg font-display font-black text-cream-200">
         Personeelsschermen
       </h2>
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -90,20 +90,20 @@ export default function HomePage() {
           <Link
             key={s.href}
             href={s.href}
-            className={`block rounded-2xl border p-4 transition hover:shadow-md active:scale-[0.99] ${s.color}`}
+            className={`block rounded-2xl border bg-dark-800 p-4 transition hover:shadow-lg active:scale-[0.99] ${s.accent}`}
           >
             <p className="text-2xl">{s.emoji}</p>
-            <p className="mt-1 font-bold">{s.title}</p>
-            <p className="mt-0.5 text-xs text-stone-600">{s.desc}</p>
+            <p className="mt-1 font-bold text-cream-200">{s.title}</p>
+            <p className="mt-0.5 text-xs text-cream-500">{s.desc}</p>
           </Link>
         ))}
       </div>
 
       {/* Gastschermen — tafels */}
-      <h2 className="mt-8 text-lg font-black text-stone-700">
+      <h2 className="mt-8 text-lg font-display font-black text-cream-200">
         Gastschermen (QR per tafel)
       </h2>
-      <p className="mt-1 text-sm text-stone-500">
+      <p className="mt-1 text-sm text-cream-500">
         Elke tafel heeft een unieke code. Tik op een tafelnummer om de
         gast-app te openen — precies zoals een gast dat doet via de QR-code.
       </p>
@@ -112,7 +112,7 @@ export default function HomePage() {
           <Link
             key={n}
             href={`/t/DEMO-T${n}`}
-            className="flex aspect-square items-center justify-center rounded-xl border border-hapas-200 bg-white font-bold text-hapas-700 shadow-sm transition hover:bg-hapas-100 hover:border-hapas-400 active:scale-95"
+            className="flex aspect-square items-center justify-center rounded-xl border border-dark-600/50 bg-dark-800 font-bold text-hapas-400 shadow-sm transition hover:bg-dark-700 hover:border-hapas-500/40 hover:text-hapas-300 active:scale-95"
           >
             {n}
           </Link>
@@ -121,20 +121,20 @@ export default function HomePage() {
 
       {/* QR-formaat info */}
       <Card className="mt-6">
-        <p className="text-sm text-stone-600">
-          <strong>QR-code formaat:</strong>{" "}
-          <code className="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-xs">
+        <p className="text-sm text-cream-400">
+          <strong className="text-cream-200">QR-code formaat:</strong>{" "}
+          <code className="rounded bg-dark-700 px-1.5 py-0.5 font-mono text-xs text-hapas-400">
             https://jouw-domein.nl/t/SLUG-T12
           </code>
         </p>
-        <p className="mt-1 text-xs text-stone-500">
+        <p className="mt-1 text-xs text-cream-500">
           SLUG = restaurant-slug · T12 = tafelnummer. Genereer QR-codes met
           bijv. qr-code-generator.com.
         </p>
       </Card>
 
       {/* Techstack */}
-      <footer className="mt-10 border-t border-stone-200 pt-4 text-center text-xs text-stone-400">
+      <footer className="mt-10 border-t border-dark-600/30 pt-4 text-center text-xs text-cream-500/60">
         <p>
           Next.js · React · Tailwind CSS · Supabase · Vercel
         </p>

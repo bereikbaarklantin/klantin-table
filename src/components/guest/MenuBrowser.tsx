@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { euro } from "@/lib/format";
 import { Category, Product } from "@/lib/types";
 import { Badge, Stepper } from "../ui";
+import { FilterChips, SearchBar } from "../premium-ui";
 
 export type Cart = Record<string, number>; // productId -> aantal
 
@@ -26,8 +27,30 @@ export default function MenuBrowser({
     [categories]
   );
   const [activeCat, setActiveCat] = useState<string>(sorted[0]?.id ?? "");
+  const [search, setSearch] = useState("");
   const active = sorted.find((c) => c.id === activeCat) ?? sorted[0];
-  const items = products.filter((p) => p.categoryId === active?.id);
+
+  const items = useMemo(() => {
+    let list = products.filter((p) => p.categoryId === active?.id);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = products.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.description?.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [products, active?.id, search]);
+
+  const filterOptions = useMemo(
+    () =>
+      sorted.map((c) => ({
+        value: c.id,
+        label: `${c.emoji} ${c.name}${drinksOnlyLocked && c.isFood ? " 🔒" : ""}`,
+      })),
+    [sorted, drinksOnlyLocked]
+  );
 
   function setQty(productId: string, qty: number) {
     const next = { ...cart };
@@ -38,47 +61,54 @@ export default function MenuBrowser({
 
   return (
     <div>
-      {/* Categorie-navigatie */}
-      <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-2">
-        {sorted.map((c) => {
-          const locked = drinksOnlyLocked && c.isFood;
-          return (
-            <button
-              key={c.id}
-              onClick={() => setActiveCat(c.id)}
-              className={`whitespace-nowrap rounded-full px-3.5 py-2 text-sm font-semibold transition ${
-                c.id === active?.id
-                  ? "bg-hapas-600 text-white shadow"
-                  : "bg-white text-stone-700 border border-stone-200"
-              } ${locked ? "opacity-50" : ""}`}
-            >
-              {c.emoji} {c.name}
-              {locked ? " 🔒" : ""}
-            </button>
-          );
-        })}
-      </div>
+      {/* Zoekbalk */}
+      <SearchBar
+        value={search}
+        onChange={setSearch}
+        placeholder="Zoek in het menu…"
+      />
 
-      {drinksOnlyLocked && active?.isFood && (
-        <div className="mt-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
+      {/* Categorie-chips */}
+      {!search.trim() && (
+        <div className="mt-3">
+          <FilterChips
+            options={filterOptions}
+            selected={activeCat}
+            onChange={(id) => setActiveCat(id)}
+          />
+        </div>
+      )}
+
+      {/* Timer-lock melding */}
+      {drinksOnlyLocked && active?.isFood && !search.trim() && (
+        <div className="mt-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-300">
           ⏱️ Uw volgende gerechten-ronde is nog niet open. U kunt gerechten
           alvast in het mandje zetten, maar verzenden kan pas als de timer is
-          afgelopen. <strong>Drankjes kunnen altijd direct.</strong>
+          afgelopen. <strong className="text-amber-200">Drankjes kunnen altijd direct.</strong>
         </div>
       )}
 
       {/* Producten */}
-      <div className="mt-3 flex flex-col gap-3">
+      <div className="mt-3 flex flex-col gap-3 stagger-children">
+        {items.length === 0 && (
+          <div className="flex flex-col items-center gap-2 py-12 text-center">
+            <span className="text-4xl opacity-50">🔍</span>
+            <p className="text-sm text-cream-500">Geen resultaten gevonden.</p>
+          </div>
+        )}
         {items.map((p) => {
           const qty = cart[p.id] ?? 0;
           return (
             <div
               key={p.id}
-              className={`flex items-start gap-3 rounded-2xl border bg-white p-3 shadow-sm ${
-                p.available ? "border-stone-100" : "border-stone-200 opacity-60"
+              className={`flex items-start gap-3 rounded-2xl border bg-dark-800 p-3 shadow-card transition-all ${
+                p.available
+                  ? "border-dark-600/30 hover:border-hapas-500/20"
+                  : "border-dark-600/20 opacity-50"
               }`}
             >
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-hapas-100 text-2xl">
+              {/* Product afbeelding/emoji */}
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-dark-700 text-2xl border border-dark-600/30">
                 {p.photoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -90,15 +120,21 @@ export default function MenuBrowser({
                   <span aria-hidden>{p.emoji}</span>
                 )}
               </div>
+
+              {/* Info */}
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-2">
-                  <h3 className="font-semibold leading-tight">{p.name}</h3>
-                  <span className="shrink-0 font-bold text-hapas-700">
+                  <h3 className="font-semibold leading-tight text-cream-200">
+                    {p.name}
+                  </h3>
+                  <span className="shrink-0 font-bold text-hapas-400 tabular-nums">
                     {euro(p.priceCents)}
                   </span>
                 </div>
                 {p.description && (
-                  <p className="mt-0.5 text-sm text-stone-500">{p.description}</p>
+                  <p className="mt-0.5 text-sm text-cream-500 line-clamp-2">
+                    {p.description}
+                  </p>
                 )}
                 <div className="mt-1.5 flex flex-wrap items-center gap-1">
                   {p.allergens.map((a) => (
@@ -109,12 +145,14 @@ export default function MenuBrowser({
                   {!p.available && <Badge tone="red">uitverkocht</Badge>}
                 </div>
               </div>
+
+              {/* Stepper / add button */}
               <div className="shrink-0 self-center">
                 {p.available ? (
                   qty === 0 ? (
                     <button
                       onClick={() => setQty(p.id, 1)}
-                      className="h-9 w-9 rounded-full bg-hapas-600 text-lg font-bold text-white shadow active:scale-95"
+                      className="flex h-10 w-10 items-center justify-center rounded-full bg-hapas-500 text-lg font-bold text-dark-900 shadow-gold-sm active:scale-95 hover:bg-hapas-400 transition-all"
                       aria-label={`${p.name} toevoegen`}
                     >
                       +

@@ -2,8 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // Gast-app: /t/HAPAS-NW-T12  (QR-code per tafel verwijst hierheen)
-// Schermen: welkom -> bezoektype -> personen -> menu/mandje -> status/timer
-// -> rekening -> review. Meerdere telefoons op dezelfde tafel delen de sessie.
+// Premium Hapas ervaring: splash → welkom → type → personen → menu → status
 // ---------------------------------------------------------------------------
 
 import { useEffect, useMemo, useState } from "react";
@@ -13,7 +12,10 @@ import ReviewFlow from "@/components/guest/ReviewFlow";
 import SessionStatus from "@/components/guest/SessionStatus";
 import { useLive, useNow } from "@/components/hooks";
 import { Button, Card } from "@/components/ui";
+
+import { ToastProvider, useToast, BottomSheet, NumberPicker, Spinner } from "@/components/premium-ui";
 import { euro, orderTotalCents } from "@/lib/format";
+
 import { foodLockRemainingMs, parseTableCode } from "@/lib/rules";
 import { store } from "@/lib/store";
 import {
@@ -23,38 +25,43 @@ import {
   VISIT_TYPE_META,
 } from "@/lib/types";
 
-type WelcomeStep = { step: "type" } | { step: "party"; visitType: VisitType };
+type WelcomeStep = { step: "splash" } | { step: "type" } | { step: "party"; visitType: VisitType };
 
-export default function GuestPage({ params }: { params: { code: string } }) {
+function GuestPageInner({ params }: { params: { code: string } }) {
   const rawCode = decodeURIComponent(params.code);
   const parsed = useMemo(() => parseTableCode(rawCode), [rawCode]);
   const lsKey = parsed ? `hapas:guest:${parsed.full}` : "";
+  const { addToast } = useToast();
 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [bootstrapped, setBootstrapped] = useState(false);
-  const [welcome, setWelcome] = useState<WelcomeStep>({ step: "type" });
+  const [welcome, setWelcome] = useState<WelcomeStep>({ step: "splash" });
   const [party, setParty] = useState(2);
   const [cart, setCart] = useState<Cart>({});
   const [showCart, setShowCart] = useState(false);
   const [view, setView] = useState<"menu" | "status">("menu");
-  const [justSent, setJustSent] = useState(false);
   const [upgrading, setUpgrading] = useState(false);
   const now = useNow();
 
+  // --- Splash timer → welkom ------------------------------------------------
+  useEffect(() => {
+    if (welcome.step === "splash") {
+      const t = setTimeout(() => setWelcome({ step: "type" }), 1800);
+      return () => clearTimeout(t);
+    }
+  }, [welcome.step]);
+
   // --- Bootstrap: bestaande sessie op dit toestel of deze tafel vinden ------
   useEffect(() => {
-    if (!parsed) {
-      setBootstrapped(true);
-      return;
-    }
+    if (!parsed) { setBootstrapped(true); return; }
     (async () => {
       try {
-        const storedId =
-          typeof window !== "undefined" ? localStorage.getItem(lsKey) : null;
+        const storedId = typeof window !== "undefined" ? localStorage.getItem(lsKey) : null;
         if (storedId) {
           const s = await store.getSession(storedId);
           if (s && !(s.status === "closed" && s.reviewDone)) {
             setSessionId(s.id);
+            setWelcome({ step: "type" }); // skip splash for returning guests
             return;
           }
           localStorage.removeItem(lsKey);
@@ -62,6 +69,7 @@ export default function GuestPage({ params }: { params: { code: string } }) {
         const active = await store.getActiveSessionByTable(parsed.full);
         if (active) {
           setSessionId(active.id);
+          setWelcome({ step: "type" });
           localStorage.setItem(lsKey, active.id);
         }
       } catch (err) {
@@ -73,7 +81,7 @@ export default function GuestPage({ params }: { params: { code: string } }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parsed?.full]);
 
-  // --- Live data -------------------------------------------------------------
+  // --- Live data -----------------------------------------------------------
   const { data: settings } = useLive(() => store.getSettings(), []);
   const { data: menu } = useLive(() => store.getMenu(), []);
   const { data: session, refresh: refreshSession } = useLive(
@@ -81,35 +89,72 @@ export default function GuestPage({ params }: { params: { code: string } }) {
     [sessionId]
   );
   const { data: orders } = useLive(
-    () =>
-      sessionId
-        ? store.listOrders({ sessionId })
-        : Promise.resolve([]),
+    () => sessionId ? store.listOrders({ sessionId }) : Promise.resolve([]),
     [sessionId]
   );
 
-  // --- Ongeldige QR ----------------------------------------------------------
+  // ── Ongeldige QR ──────────────────────────────────────────────────────────
   if (!parsed) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center p-6 text-center">
-        <div className="text-5xl">🤔</div>
-        <h1 className="mt-3 text-xl font-bold">QR-code niet herkend</h1>
-        <p className="mt-2 text-stone-600">
+      <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center p-6 text-center">
+        <div className="text-5xl opacity-60">🤔</div>
+        <h1 className="mt-4 font-display text-2xl text-cream-200">QR-code niet herkend</h1>
+        <p className="mt-2 text-cream-500">
           Scan de QR-code op uw tafel opnieuw, of vraag de bediening om hulp.
         </p>
       </main>
     );
   }
 
+  // ── Loading ────────────────────────────────────────────────────────────────
   if (!bootstrapped || !settings || !menu) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <p className="animate-pulse text-stone-400">Laden…</p>
+      <main className="mx-auto min-h-dvh max-w-md p-4">
+        <div className="flex flex-col items-center gap-4 pt-12 animate-fade-in">
+          <div className="h-16 w-16 rounded-2xl bg-dark-800 border border-hapas-500/20 flex items-center justify-center">
+            <Spinner size={24} className="text-hapas-500" />
+          </div>
+          <div className="skeleton-shimmer h-6 w-48 rounded-lg bg-dark-700" />
+          <div className="skeleton-shimmer h-3 w-32 rounded bg-dark-700" />
+        </div>
+        <div className="mt-10 space-y-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-2xl border border-dark-600/30 bg-dark-800 p-4">
+              <div className="flex gap-3">
+                <div className="skeleton-shimmer h-16 w-16 rounded-xl bg-dark-700 shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="skeleton-shimmer h-4 w-3/4 rounded bg-dark-700" />
+                  <div className="skeleton-shimmer h-3 w-1/2 rounded bg-dark-700" />
+                  <div className="skeleton-shimmer h-4 w-16 rounded bg-dark-700" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </main>
     );
   }
 
-  // --- Review na sluiten tafel -------------------------------------------------
+  // ── Splash screen ─────────────────────────────────────────────────────────
+  if (welcome.step === "splash" && !session) {
+    return (
+      <main className="flex min-h-dvh flex-col items-center justify-center p-6 animate-fade-in">
+        <div className="flex flex-col items-center gap-4">
+          {/* Logo placeholder — wordt vervangen door het echte Hapas logo */}
+          <div className="h-20 w-20 rounded-2xl bg-dark-800 border border-hapas-500/30 flex items-center justify-center shadow-gold-glow">
+            <span className="text-4xl">🥘</span>
+          </div>
+          <h1 className="font-display text-display-lg text-cream-200 text-center">
+            {settings.restaurantName}
+          </h1>
+          <div className="divider-gold w-32" />
+          <p className="text-cream-500 text-sm">Tafel {parsed.tableNumber}</p>
+        </div>
+      </main>
+    );
+  }
+
+  // ── Review na sluiten tafel ────────────────────────────────────────────────
   if (session && session.status === "closed" && !session.reviewDone) {
     return (
       <ReviewFlow
@@ -125,45 +170,50 @@ export default function GuestPage({ params }: { params: { code: string } }) {
 
   if (session && session.status === "closed" && session.reviewDone) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center p-6 text-center">
-        <div className="text-5xl">👋</div>
-        <h1 className="mt-3 text-2xl font-bold">Tot de volgende keer!</h1>
-        <p className="mt-2 text-stone-600">
-          Deze tafel is afgesloten. Nieuw bezoek gestart?
-        </p>
-        <div className="mt-4">
-          <Button
-            onClick={() => {
-              localStorage.removeItem(lsKey);
-              setSessionId(null);
-              setWelcome({ step: "type" });
-              setCart({});
-            }}
-          >
-            Nieuwe bestelling starten
-          </Button>
+      <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center p-6 text-center">
+        <div className="animate-fade-in-up">
+          <div className="text-5xl mb-4">👋</div>
+          <h1 className="font-display text-display-md text-cream-200">Tot de volgende keer!</h1>
+          <p className="mt-3 text-cream-500">
+            Deze tafel is afgesloten. Wilt u opnieuw bestellen?
+          </p>
+          <div className="mt-6">
+            <Button
+              onClick={() => {
+                localStorage.removeItem(lsKey);
+                setSessionId(null);
+                setWelcome({ step: "type" });
+                setCart({});
+              }}
+            >
+              Nieuwe bestelling starten
+            </Button>
+          </div>
         </div>
       </main>
     );
   }
 
-  // --- Welkomflow (scherm 1-3): type + personen --------------------------------
+  // ── Welkomflow: type + personen ────────────────────────────────────────────
   if (!session) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-md flex-col p-6">
-        <header className="mt-6 text-center">
-          <div className="text-5xl">🥘</div>
-          <h1 className="mt-2 text-2xl font-black text-hapas-800">
+      <main className="mx-auto flex min-h-dvh max-w-md flex-col p-6">
+        <header className="mt-8 text-center animate-fade-in">
+          <div className="h-16 w-16 mx-auto rounded-2xl bg-dark-800 border border-hapas-500/20 flex items-center justify-center shadow-gold-sm">
+            <span className="text-3xl">🥘</span>
+          </div>
+          <h1 className="mt-4 font-display text-display-md text-cream-200">
             {settings.restaurantName}
           </h1>
-          <p className="mt-1 font-semibold text-stone-500">
+          <div className="divider-gold w-24 mx-auto mt-2" />
+          <p className="mt-2 text-sm text-hapas-500 font-medium">
             Tafel {parsed.tableNumber}
           </p>
         </header>
 
         {welcome.step === "type" && (
-          <div className="mt-8 flex flex-col gap-3">
-            <p className="text-center text-sm font-semibold uppercase tracking-wide text-stone-400">
+          <div className="mt-8 flex flex-col gap-3 stagger-children">
+            <p className="text-center text-xs font-bold uppercase tracking-widest text-hapas-500 mb-2">
               Waar komt u voor?
             </p>
             {(Object.keys(VISIT_TYPE_META) as VisitType[]).map((t) => {
@@ -185,19 +235,19 @@ export default function GuestPage({ params }: { params: { code: string } }) {
                       })();
                     }
                   }}
-                  className="rounded-2xl border border-stone-200 bg-white p-4 text-left shadow-sm transition hover:border-hapas-400 active:scale-[0.99]"
+                  className="rounded-2xl border border-dark-600/50 bg-dark-800 p-5 text-left shadow-card transition-all hover:border-hapas-500/40 hover:shadow-card-hover active:scale-[0.99]"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-4">
                     <span className="text-3xl">{meta.emoji}</span>
                     <div>
-                      <p className="font-bold">{meta.label}</p>
-                      <p className="text-sm text-stone-500">{meta.description}</p>
+                      <p className="font-semibold text-cream-200">{meta.label}</p>
+                      <p className="text-sm text-cream-500">{meta.description}</p>
                     </div>
                   </div>
                 </button>
               );
             })}
-            <p className="mt-2 text-center text-xs text-stone-400">
+            <p className="mt-4 text-center text-xs text-cream-500/60">
               Liever persoonlijk bestellen? Dat kan altijd — onze collega&apos;s
               helpen u graag.
             </p>
@@ -205,35 +255,23 @@ export default function GuestPage({ params }: { params: { code: string } }) {
         )}
 
         {welcome.step === "party" && (
-          <div className="mt-8">
-            <p className="text-center text-sm font-semibold uppercase tracking-wide text-stone-400">
+          <div className="mt-8 animate-fade-in">
+            <p className="text-center text-xs font-bold uppercase tracking-widest text-hapas-500 mb-6">
               Met hoeveel personen bent u?
             </p>
-            <div className="mt-4 grid grid-cols-4 gap-2">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
-                <button
-                  key={n}
-                  onClick={() => setParty(n)}
-                  className={`rounded-xl py-3 text-lg font-bold transition ${
-                    party === n
-                      ? "bg-hapas-600 text-white shadow"
-                      : "bg-white border border-stone-200"
-                  }`}
-                >
-                  {n}
-                </button>
-              ))}
+            <div className="flex justify-center">
+              <NumberPicker value={party} onChange={setParty} min={1} max={12} />
             </div>
-            <Card className="mt-4 bg-hapas-100/60">
-              <p className="text-sm text-hapas-900">
-                🥘 <strong>Zo werkt het tapas-diner:</strong> in de eerste ronde
+            <Card className="mt-6 bg-hapas-500/5 border-hapas-500/20">
+              <p className="text-sm text-cream-400">
+                🥘 <strong className="text-cream-200">Zo werkt het tapas-diner:</strong> in de eerste ronde
                 kiest u minimaal {settings.minDishesPerPersonRound1} gerechten
                 per persoon. Daarna bestelt u elke{" "}
                 {settings.roundIntervalMin} minuten een nieuwe ronde — zo komt
                 alles vers en warm uit de keuken. Drankjes kunnen altijd.
               </p>
             </Card>
-            <div className="mt-4 flex gap-2">
+            <div className="mt-6 flex gap-3">
               <Button
                 variant="secondary"
                 onClick={() => setWelcome({ step: "type" })}
@@ -266,7 +304,7 @@ export default function GuestPage({ params }: { params: { code: string } }) {
     );
   }
 
-  // --- Actieve sessie: menu + status --------------------------------------------
+  // ── Actieve sessie: menu + status ──────────────────────────────────────────
   const cartCount = Object.values(cart).reduce((a, b) => a + b, 0);
   const cartItems: OrderItem[] = Object.entries(cart)
     .map(([productId, qty]) => {
@@ -285,55 +323,47 @@ export default function GuestPage({ params }: { params: { code: string } }) {
     if (!res.ok) return res.errors ?? ["Er ging iets mis."];
     setCart({});
     setShowCart(false);
-    setJustSent(true);
     setView("status");
-    setTimeout(() => setJustSent(false), 3000);
+    addToast("Bestelling ontvangen! De keuken gaat voor u aan de slag.", "success");
     refreshSession();
     return null;
   }
 
   return (
-    <main className="mx-auto max-w-md p-4 pb-28">
-      {/* Kop */}
-      <header className="mb-3 flex items-center justify-between">
+    <main className="mx-auto max-w-md p-4 pb-28 min-h-dvh">
+      {/* Header */}
+      <header className="mb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-black text-hapas-800">
+          <h1 className="text-lg font-display font-bold text-cream-200">
             {settings.restaurantName}
           </h1>
-          <p className="text-sm text-stone-500">
-            Tafel {session.tableNumber} · U bestelt voor deze tafel
+          <p className="text-xs text-cream-500">
+            Tafel {session.tableNumber}
           </p>
         </div>
-        <div className="flex rounded-full bg-white p-1 shadow-sm">
+        <div className="flex rounded-full bg-dark-800 p-1 border border-dark-600/50">
           <button
             onClick={() => setView("menu")}
-            className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
-              view === "menu" ? "bg-hapas-600 text-white" : "text-stone-600"
+            className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-all ${
+              view === "menu"
+                ? "bg-hapas-500 text-dark-900 shadow-gold-sm"
+                : "text-cream-500 hover:text-cream-200"
             }`}
           >
             Menu
           </button>
           <button
             onClick={() => setView("status")}
-            className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
-              view === "status" ? "bg-hapas-600 text-white" : "text-stone-600"
+            className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-all ${
+              view === "status"
+                ? "bg-hapas-500 text-dark-900 shadow-gold-sm"
+                : "text-cream-500 hover:text-cream-200"
             }`}
           >
             Tafel
           </button>
         </div>
       </header>
-
-      {justSent && (
-        <div className="mb-3 rounded-2xl bg-emerald-50 p-4 text-center">
-          <p className="text-lg font-bold text-emerald-700">
-            ✅ Bestelling ontvangen!
-          </p>
-          <p className="text-sm text-emerald-800">
-            De keuken en bar gaan voor u aan de slag.
-          </p>
-        </div>
-      )}
 
       {view === "menu" ? (
         <MenuBrowser
@@ -364,55 +394,41 @@ export default function GuestPage({ params }: { params: { code: string } }) {
         />
       )}
 
-      {/* Upgrade-dialoog borrel/drankjes -> diner */}
-      {upgrading && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4">
-          <Card className="w-full max-w-md">
-            <h2 className="font-bold">Upgraden naar volledig diner</h2>
-            <p className="mt-1 text-sm text-stone-500">
-              Met hoeveel personen dineert u?
-            </p>
-            <div className="mt-3 grid grid-cols-6 gap-2">
-              {[1, 2, 3, 4, 5, 6].map((n) => (
-                <button
-                  key={n}
-                  onClick={() => setParty(n)}
-                  className={`rounded-xl py-2 font-bold ${
-                    party === n
-                      ? "bg-hapas-600 text-white"
-                      : "bg-stone-100 text-stone-700"
-                  }`}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-            <div className="mt-4 flex gap-2">
-              <Button variant="ghost" onClick={() => setUpgrading(false)}>
-                Annuleren
-              </Button>
-              <div className="flex-1">
-                <Button
-                  full
-                  onClick={async () => {
-                    await store.setVisitType(session.id, "diner", party);
-                    setUpgrading(false);
-                    refreshSession();
-                  }}
-                >
-                  Start diner
-                </Button>
-              </div>
-            </div>
-          </Card>
+      {/* Upgrade-dialoog → BottomSheet */}
+      <BottomSheet
+        open={upgrading}
+        onClose={() => setUpgrading(false)}
+        title="Upgraden naar volledig diner"
+      >
+        <p className="text-sm text-cream-500 mb-4">Met hoeveel personen dineert u?</p>
+        <div className="flex justify-center mb-4">
+          <NumberPicker value={party} onChange={setParty} min={1} max={12} />
         </div>
-      )}
+        <div className="flex gap-3">
+          <Button variant="ghost" onClick={() => setUpgrading(false)}>
+            Annuleren
+          </Button>
+          <div className="flex-1">
+            <Button
+              full
+              onClick={async () => {
+                await store.setVisitType(session.id, "diner", party);
+                setUpgrading(false);
+                refreshSession();
+                addToast("Diner gestart!", "success");
+              }}
+            >
+              Start diner
+            </Button>
+          </div>
+        </div>
+      </BottomSheet>
 
       {/* Zwevende mandje-balk */}
       {cartCount > 0 && !showCart && (
         <button
           onClick={() => setShowCart(true)}
-          className="fixed inset-x-4 bottom-4 z-30 mx-auto flex max-w-md items-center justify-between rounded-2xl bg-hapas-600 px-5 py-4 text-white shadow-xl active:scale-[0.99]"
+          className="fixed inset-x-4 bottom-4 z-30 mx-auto flex max-w-md items-center justify-between rounded-2xl bg-hapas-500 px-5 py-4 text-dark-900 shadow-gold-md active:scale-[0.99] transition-all gold-pulse"
         >
           <span className="font-bold">
             🛒 {cartCount} {cartCount === 1 ? "item" : "items"}
@@ -436,5 +452,14 @@ export default function GuestPage({ params }: { params: { code: string } }) {
         />
       )}
     </main>
+  );
+}
+
+// Wrap with ToastProvider
+export default function GuestPage({ params }: { params: { code: string } }) {
+  return (
+    <ToastProvider>
+      <GuestPageInner params={params} />
+    </ToastProvider>
   );
 }

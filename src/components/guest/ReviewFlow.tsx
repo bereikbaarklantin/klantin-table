@@ -13,6 +13,7 @@
 import { useState } from "react";
 import { Session, Settings } from "@/lib/types";
 import { Button, Card } from "../ui";
+import { StarRating } from "../premium-ui";
 
 export default function ReviewFlow({
   session,
@@ -61,53 +62,51 @@ export default function ReviewFlow({
     }
   }
 
+  // ── Bedankt-scherm ────────────────────────────────────────────────────────
   if (done) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center p-6 text-center">
-        <div className="text-5xl">🙏</div>
-        <h1 className="mt-3 text-2xl font-bold">Bedankt!</h1>
-        <p className="mt-2 text-stone-600">
-          {done === "intern"
-            ? "Uw feedback is direct doorgestuurd naar ons managementteam. We nemen dit serieus — en als u contactgegevens achterliet, hoort u snel van ons."
-            : "Fijn dat u uw ervaring wilt delen. Tot snel bij Hapas Noordwijk!"}
-        </p>
+      <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center p-6 text-center">
+        <div className="animate-fade-in-up">
+          <div className="text-5xl">🙏</div>
+          <h1 className="mt-3 font-display text-display-md text-cream-200">
+            Bedankt!
+          </h1>
+          <p className="mt-2 text-cream-500">
+            {done === "intern"
+              ? "Uw feedback is direct doorgestuurd naar ons managementteam. We nemen dit serieus — en als u contactgegevens achterliet, hoort u snel van ons."
+              : "Fijn dat u uw ervaring wilt delen. Tot snel bij " +
+                settings.restaurantName +
+                "!"}
+          </p>
+        </div>
       </main>
     );
   }
 
+  // ── Review formulier ──────────────────────────────────────────────────────
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center p-6">
-      <Card className="text-center">
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center p-6">
+      <Card className="text-center animate-fade-in">
         <div className="text-4xl">👋</div>
-        <h1 className="mt-2 text-xl font-bold">
+        <h1 className="mt-2 font-display text-xl font-bold text-cream-200">
           Hoe tevreden was uw bezoek?
         </h1>
-        <p className="mt-1 text-sm text-stone-500">
+        <p className="mt-1 text-sm text-cream-500">
           Tafel {session.tableNumber} · {settings.restaurantName}
         </p>
 
-        {/* Sterren */}
-        <div className="mt-4 flex justify-center gap-2">
-          {[1, 2, 3, 4, 5].map((n) => (
-            <button
-              key={n}
-              onClick={() => setStars(n)}
-              aria-label={`${n} sterren`}
-              className={`text-4xl transition ${
-                n <= stars ? "scale-110" : "opacity-30"
-              }`}
-            >
-              ⭐
-            </button>
-          ))}
+        {/* Sterren — premium SVG component */}
+        <div className="mt-5 flex justify-center">
+          <StarRating value={stars} onChange={setStars} size={40} />
         </div>
 
+        {/* Laag: intern feedback formulier */}
         {showInternalForm && !high && (
-          <div className="mt-5 rounded-xl bg-stone-50 p-4 text-left">
-            <p className="font-semibold">
+          <div className="mt-5 rounded-2xl bg-dark-700/50 border border-dark-600/30 p-4 text-left">
+            <p className="font-semibold text-cream-200">
               Dat spijt ons — vertel ons wat beter kon.
             </p>
-            <p className="mt-0.5 text-xs text-stone-500">
+            <p className="mt-0.5 text-xs text-cream-500">
               Uw bericht gaat rechtstreeks naar de eigenaar.
             </p>
             <textarea
@@ -115,30 +114,31 @@ export default function ReviewFlow({
               onChange={(e) => setFeedback(e.target.value)}
               rows={3}
               placeholder="Wat kunnen we verbeteren?"
-              className="mt-2 w-full rounded-xl border border-stone-200 p-3 text-sm"
+              className="mt-2 w-full rounded-xl border border-dark-600/50 bg-dark-800 p-3 text-sm text-cream-200 placeholder:text-cream-500/50 focus:border-hapas-500/50 focus:outline-none transition"
             />
             <input
               value={contact}
               onChange={(e) => setContact(e.target.value)}
-              placeholder="E-mail of telefoon (optioneel, voor reactie)"
-              className="mt-2 w-full rounded-xl border border-stone-200 p-3 text-sm"
+              placeholder="E-mail of telefoon (optioneel)"
+              className="mt-2 w-full rounded-xl border border-dark-600/50 bg-dark-800 p-3 text-sm text-cream-200 placeholder:text-cream-500/50 focus:border-hapas-500/50 focus:outline-none transition"
             />
             <div className="mt-3">
-              <Button full disabled={busy} onClick={submitInternal}>
+              <Button full loading={busy} onClick={submitInternal}>
                 Feedback versturen
               </Button>
             </div>
           </div>
         )}
 
+        {/* Hoog: Google + optioneel intern */}
         {showInternalForm && high && (
-          <div className="mt-5">
-            <p className="text-stone-600">
+          <div className="mt-5 animate-fade-in">
+            <p className="text-cream-400">
               Geweldig! Zou u dit ook op Google willen delen? Daar helpt u ons
-              enorm mee. 🧡
+              enorm mee.
             </p>
-            <div className="mt-3 flex flex-col gap-2">
-              <Button full size="lg" disabled={busy} onClick={goGoogle}>
+            <div className="mt-4 flex flex-col gap-2">
+              <Button full size="lg" loading={busy} onClick={goGoogle}>
                 Deel op Google Reviews
               </Button>
               <Button
@@ -147,17 +147,17 @@ export default function ReviewFlow({
                 disabled={busy}
                 onClick={submitInternal}
               >
-                Liever direct feedback aan ons geven
+                Liever direct feedback aan ons
               </Button>
             </div>
           </div>
         )}
 
-        {/* Compliant-modus: Google-optie blijft ook bij lage score bereikbaar */}
+        {/* Compliant-modus: Google-optie bij lage score ook tonen */}
         {showGoogleOption && !high && (
           <button
             onClick={goGoogle}
-            className="mt-3 text-xs text-stone-400 underline"
+            className="mt-3 text-xs text-cream-500/50 underline underline-offset-2 hover:text-cream-400 transition"
           >
             Of deel uw ervaring op Google
           </button>

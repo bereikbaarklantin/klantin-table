@@ -9,8 +9,12 @@ import { foodLockRemainingMs } from "@/lib/rules";
 import { Order, RequestKind, Session, Settings, VISIT_TYPE_META } from "@/lib/types";
 import { useNow } from "../hooks";
 import { Badge, Button, Card, SectionTitle } from "../ui";
+import { BottomSheet, NumberPicker, useToast } from "../premium-ui";
 
-const STATUS_LABEL: Record<Order["status"], { text: string; tone: "stone" | "amber" | "blue" | "green" }> = {
+const STATUS_LABEL: Record<
+  Order["status"],
+  { text: string; tone: "stone" | "amber" | "blue" | "green" }
+> = {
   nieuw: { text: "Ontvangen", tone: "stone" },
   in_bereiding: { text: "In bereiding", tone: "amber" },
   gereed: { text: "Komt eraan", tone: "blue" },
@@ -37,9 +41,11 @@ export default function SessionStatus({
   onChangeParty: (n: number) => Promise<void>;
 }) {
   const now = useNow();
+  const { addToast } = useToast();
   const [question, setQuestion] = useState("");
   const [askOpen, setAskOpen] = useState(false);
-  const [sent, setSent] = useState<string | null>(null);
+  const [partySheet, setPartySheet] = useState(false);
+  const [partyDraft, setPartyDraft] = useState(session.partySize);
 
   const remaining = foodLockRemainingMs(session, settings, now);
   const totalMs = settings.roundIntervalMin * 60_000;
@@ -50,8 +56,7 @@ export default function SessionStatus({
 
   async function fire(kind: RequestKind, note?: string) {
     await onRequest(kind, note);
-    setSent(kind);
-    setTimeout(() => setSent(null), 2500);
+    addToast("Doorgegeven aan de bediening!", "success");
   }
 
   return (
@@ -59,22 +64,18 @@ export default function SessionStatus({
       {/* Sessie-info */}
       <Card className="flex items-center justify-between">
         <div>
-          <p className="text-sm text-stone-500">
+          <p className="text-sm text-cream-500">
             Tafel {session.tableNumber} · {meta.emoji} {meta.label}
           </p>
           {session.visitType === "diner" && (
-            <p className="text-sm text-stone-500">
+            <p className="text-sm text-cream-500">
               {session.partySize} personen · ronde {session.roundCount}
               <button
                 onClick={() => {
-                  const v = prompt(
-                    "Aantal personen aan tafel:",
-                    String(session.partySize)
-                  );
-                  const n = v ? parseInt(v, 10) : NaN;
-                  if (!isNaN(n) && n > 0 && n <= 20) void onChangeParty(n);
+                  setPartyDraft(session.partySize);
+                  setPartySheet(true);
                 }}
-                className="ml-2 text-xs font-semibold text-hapas-700 underline"
+                className="ml-2 text-xs font-semibold text-hapas-400 underline underline-offset-2 hover:text-hapas-300 transition"
               >
                 wijzig
               </button>
@@ -88,25 +89,53 @@ export default function SessionStatus({
         )}
       </Card>
 
-      {/* Rondetimer (scherm 7) */}
+      {/* NumberPicker BottomSheet voor party size */}
+      <BottomSheet
+        open={partySheet}
+        onClose={() => setPartySheet(false)}
+        title="Aantal personen wijzigen"
+      >
+        <div className="flex justify-center my-4">
+          <NumberPicker value={partyDraft} onChange={setPartyDraft} min={1} max={20} />
+        </div>
+        <div className="flex gap-3">
+          <Button variant="ghost" onClick={() => setPartySheet(false)}>
+            Annuleren
+          </Button>
+          <div className="flex-1">
+            <Button
+              full
+              onClick={async () => {
+                await onChangeParty(partyDraft);
+                setPartySheet(false);
+                addToast(`Aantal aangepast naar ${partyDraft} personen.`, "success");
+              }}
+            >
+              Opslaan
+            </Button>
+          </div>
+        </div>
+      </BottomSheet>
+
+      {/* Rondetimer */}
       {session.visitType === "diner" && session.roundCount > 0 && (
         <Card className="mt-3 text-center">
           {remaining > 0 ? (
             <>
-              <p className="text-sm font-semibold text-stone-500">
+              <p className="text-sm font-semibold text-cream-500">
                 Volgende gerechten-ronde over
               </p>
-              <p className="my-1 text-5xl font-black tabular-nums text-hapas-700">
+              <p className="my-1 text-5xl font-black tabular-nums text-hapas-400">
                 {mmss(remaining)}
               </p>
-              <div className="mx-auto mt-2 h-2 max-w-xs overflow-hidden rounded-full bg-stone-100">
+              <div className="mx-auto mt-2 h-2 max-w-xs overflow-hidden rounded-full bg-dark-700">
                 <div
                   className="h-full bg-hapas-500 transition-all"
                   style={{ width: `${Math.round(progress * 100)}%` }}
                 />
               </div>
-              <p className="mt-3 text-sm text-stone-500">
-                🥂 <strong>Drankjes en desserts-tip:</strong> drankjes kunt u
+              <p className="mt-3 text-sm text-cream-500">
+                🥂 <strong className="text-cream-300">Drankjes en desserts-tip:</strong> drankjes kunt u
                 altijd direct bestellen — de timer geldt alleen voor gerechten.
               </p>
               <div className="mt-3">
@@ -117,10 +146,10 @@ export default function SessionStatus({
             </>
           ) : (
             <>
-              <p className="text-lg font-bold text-emerald-700">
+              <p className="text-lg font-bold text-emerald-400">
                 ✅ Nieuwe ronde geopend!
               </p>
-              <p className="mt-1 text-sm text-stone-500">
+              <p className="mt-1 text-sm text-cream-500">
                 Bestel zo veel of weinig gerechten als u wilt.
               </p>
               <div className="mt-3">
@@ -137,7 +166,7 @@ export default function SessionStatus({
       <SectionTitle>Uw bestellingen</SectionTitle>
       {orders.length === 0 ? (
         <Card>
-          <p className="text-sm text-stone-500">
+          <p className="text-sm text-cream-500">
             Nog geen bestellingen. Open het menu om te beginnen.
           </p>
         </Card>
@@ -148,7 +177,7 @@ export default function SessionStatus({
             return (
               <Card key={o.id}>
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-stone-500">
+                  <p className="text-sm font-semibold text-cream-500">
                     {timeHM(o.createdAt)} ·{" "}
                     {o.station === "kitchen"
                       ? o.roundNumber
@@ -160,11 +189,11 @@ export default function SessionStatus({
                 </div>
                 <ul className="mt-2 text-sm">
                   {o.items.map((it, i) => (
-                    <li key={i} className="flex justify-between">
+                    <li key={i} className="flex justify-between text-cream-300">
                       <span>
                         {it.qty}× {it.name}
                       </span>
-                      <span className="tabular-nums text-stone-500">
+                      <span className="tabular-nums text-cream-500">
                         {euro(it.qty * it.priceCents)}
                       </span>
                     </li>
@@ -186,7 +215,7 @@ export default function SessionStatus({
           🍴 Bestek
         </Button>
         <Button variant="secondary" onClick={() => setAskOpen(true)}>
-          💬 Vraag aan bediening
+          💬 Vraag
         </Button>
         <Button
           variant="secondary"
@@ -196,55 +225,54 @@ export default function SessionStatus({
           🧾 Afrekenen
         </Button>
       </div>
-      {sent && (
-        <p className="mt-2 text-center text-sm font-semibold text-emerald-700">
-          ✅ Doorgegeven aan de bediening.
-        </p>
-      )}
-      {askOpen && (
-        <Card className="mt-2">
-          <textarea
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            rows={2}
-            placeholder="Uw vraag…"
-            className="w-full rounded-xl border border-stone-200 p-3 text-sm"
-          />
-          <div className="mt-2 flex gap-2">
-            <Button
-              size="sm"
-              onClick={() => {
-                if (question.trim()) {
-                  void fire("vraag", question.trim());
-                  setQuestion("");
-                  setAskOpen(false);
-                }
-              }}
-            >
-              Versturen
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setAskOpen(false)}>
-              Annuleren
-            </Button>
-          </div>
-        </Card>
-      )}
+
+      {/* Vraag BottomSheet */}
+      <BottomSheet
+        open={askOpen}
+        onClose={() => setAskOpen(false)}
+        title="Vraag aan bediening"
+      >
+        <textarea
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          rows={3}
+          placeholder="Uw vraag…"
+          autoFocus
+          className="w-full rounded-2xl border border-dark-600/50 bg-dark-700 p-3 text-sm text-cream-200 placeholder:text-cream-500/50 focus:border-hapas-500/50 focus:outline-none transition"
+        />
+        <div className="mt-3 flex gap-2">
+          <Button
+            onClick={() => {
+              if (question.trim()) {
+                void fire("vraag", question.trim());
+                setQuestion("");
+                setAskOpen(false);
+              }
+            }}
+          >
+            Versturen
+          </Button>
+          <Button variant="ghost" onClick={() => setAskOpen(false)}>
+            Annuleren
+          </Button>
+        </div>
+      </BottomSheet>
 
       {/* Rekening */}
       <SectionTitle>Rekening</SectionTitle>
       <Card>
         <div className="flex items-center justify-between">
-          <p className="font-semibold">Totaal tot nu toe</p>
-          <p className="text-xl font-bold">{euro(billTotal)}</p>
+          <p className="font-semibold text-cream-200">Totaal tot nu toe</p>
+          <p className="text-xl font-bold text-hapas-400 tabular-nums">{euro(billTotal)}</p>
         </div>
         {session.status === "awaiting_payment" ? (
-          <div className="mt-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
+          <div className="mt-2 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-300">
             🧾 De bediening komt naar u toe om af te rekenen (pin of contant).
             Bedankt voor uw bezoek!
           </div>
         ) : (
-          <p className="mt-1 text-sm text-stone-500">
-            Klaar? Tik op “Afrekenen” — de bediening komt met de pin naar uw
+          <p className="mt-1 text-sm text-cream-500">
+            Klaar? Tik op &quot;Afrekenen&quot; — de bediening komt met de pin naar uw
             tafel.
           </p>
         )}

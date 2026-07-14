@@ -23,10 +23,10 @@ function slugify(name: string): string {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  trial: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
-  active: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
-  paused: "bg-slate-500/20 text-slate-400 border-slate-500/30",
-  cancelled: "bg-red-500/20 text-red-300 border-red-500/30",
+  trial: "bg-yellow-500/15 text-yellow-300 border-yellow-500/25",
+  active: "bg-emerald-500/15 text-emerald-300 border-emerald-500/25",
+  paused: "bg-cream-500/10 text-cream-400 border-cream-500/20",
+  cancelled: "bg-red-500/15 text-red-300 border-red-500/25",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -37,7 +37,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------
-// Auth gate — PIN-based, stored in sessionStorage
+// Auth gate
 // ---------------------------------------------------------------------------
 
 function AdminLogin({ onAuth }: { onAuth: () => void }) {
@@ -56,11 +56,14 @@ function AdminLogin({ onAuth }: { onAuth: () => void }) {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-950 p-6">
-      <div className="w-full max-w-sm rounded-2xl border border-slate-700 bg-slate-900 p-8 shadow-xl">
+    <main className="flex min-h-dvh items-center justify-center p-6">
+      <div className="w-full max-w-sm animate-fade-in rounded-2xl border border-dark-600/50 bg-dark-800 p-8 shadow-card">
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-black text-white">Admin</h1>
-          <p className="mt-1 text-sm text-slate-400">
+          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-dark-700 border border-hapas-500/20 text-2xl">
+            🛡️
+          </div>
+          <h1 className="mt-3 text-2xl font-display font-black text-cream-200">Admin</h1>
+          <p className="mt-1 text-sm text-cream-500">
             Voer het beheerderswachtwoord in.
           </p>
         </div>
@@ -74,7 +77,7 @@ function AdminLogin({ onAuth }: { onAuth: () => void }) {
           onKeyDown={(e) => e.key === "Enter" && tryLogin()}
           autoFocus
           placeholder="Wachtwoord"
-          className="w-full rounded-xl border border-slate-600 bg-slate-800 px-4 py-3 text-center text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="w-full rounded-xl border border-dark-600/50 bg-dark-700 px-4 py-3 text-center text-cream-200 placeholder-cream-500/40 focus:border-hapas-500/50 focus:outline-none transition"
         />
         {error && (
           <p className="mt-2 text-center text-sm font-semibold text-red-400">
@@ -83,7 +86,7 @@ function AdminLogin({ onAuth }: { onAuth: () => void }) {
         )}
         <button
           onClick={tryLogin}
-          className="mt-4 w-full rounded-xl bg-indigo-600 px-4 py-3 font-semibold text-white transition hover:bg-indigo-700 active:scale-[0.98]"
+          className="mt-4 w-full rounded-xl bg-hapas-500 px-4 py-3 font-bold text-dark-900 transition hover:bg-hapas-400 active:scale-[0.98] shadow-gold-sm"
         >
           Inloggen
         </button>
@@ -106,14 +109,14 @@ function StatCard({
   sub?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-700 bg-slate-800/60 p-5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+    <div className="rounded-2xl border border-dark-600/30 bg-dark-800 p-5 shadow-card">
+      <p className="text-xs font-bold uppercase tracking-widest text-hapas-500">
         {label}
       </p>
-      <p className="mt-1 text-2xl font-black tabular-nums text-white">
+      <p className="mt-1 text-2xl font-black tabular-nums text-cream-200">
         {value}
       </p>
-      {sub && <p className="mt-0.5 text-xs text-slate-500">{sub}</p>}
+      {sub && <p className="mt-0.5 text-xs text-cream-500">{sub}</p>}
     </div>
   );
 }
@@ -125,7 +128,7 @@ function StatCard({
 function StatusBadge({ status }: { status: string }) {
   return (
     <span
-      className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-semibold ${STATUS_COLORS[status] ?? "bg-slate-700 text-slate-300 border-slate-600"}`}
+      className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-semibold ${STATUS_COLORS[status] ?? "bg-dark-700 text-cream-400 border-dark-600"}`}
     >
       {STATUS_LABELS[status] ?? status}
     </span>
@@ -214,17 +217,20 @@ function CreateTenantPanel({
     }
   }
 
+  const inputClass =
+    "w-full rounded-xl border border-dark-600/50 bg-dark-700 px-4 py-2.5 text-cream-200 placeholder-cream-500/40 focus:border-hapas-500/50 focus:outline-none transition";
+
   return (
-    <div className="rounded-2xl border border-slate-700 bg-slate-800/60">
+    <div className="rounded-2xl border border-dark-600/30 bg-dark-800 shadow-card">
       <button
         onClick={() => setOpen(!open)}
         className="flex w-full items-center justify-between px-6 py-4 text-left"
       >
-        <span className="text-lg font-bold text-white">
+        <span className="text-lg font-bold text-cream-200">
           + Nieuw restaurant aanmaken
         </span>
         <svg
-          className={`h-5 w-5 text-slate-400 transition ${open ? "rotate-180" : ""}`}
+          className={`h-5 w-5 text-cream-500 transition ${open ? "rotate-180" : ""}`}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -235,24 +241,22 @@ function CreateTenantPanel({
       </button>
 
       {open && (
-        <form onSubmit={handleSubmit} className="border-t border-slate-700 px-6 py-5">
+        <form onSubmit={handleSubmit} className="border-t border-dark-600/30 px-6 py-5">
           <div className="grid gap-4 sm:grid-cols-2">
-            {/* Naam */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-300">
+              <label className="mb-1 block text-sm font-semibold text-cream-300">
                 Restaurant naam *
               </label>
               <input
                 value={form.name}
                 onChange={(e) => updateName(e.target.value)}
                 placeholder="bijv. Tapas El Sol"
-                className="w-full rounded-xl border border-slate-600 bg-slate-700 px-4 py-2.5 text-white placeholder-slate-400 focus:border-indigo-500 focus:outline-none"
+                className={inputClass}
               />
             </div>
 
-            {/* Slug */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-300">
+              <label className="mb-1 block text-sm font-semibold text-cream-300">
                 Slug *
               </label>
               <input
@@ -261,13 +265,12 @@ function CreateTenantPanel({
                   setForm((f) => ({ ...f, slug: slugify(e.target.value) }))
                 }
                 placeholder="tapas-el-sol"
-                className="w-full rounded-xl border border-slate-600 bg-slate-700 px-4 py-2.5 text-white placeholder-slate-400 focus:border-indigo-500 focus:outline-none font-mono text-sm"
+                className={`${inputClass} font-mono text-sm`}
               />
             </div>
 
-            {/* Email */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-300">
+              <label className="mb-1 block text-sm font-semibold text-cream-300">
                 E-mail eigenaar *
               </label>
               <input
@@ -277,13 +280,12 @@ function CreateTenantPanel({
                   setForm((f) => ({ ...f, ownerEmail: e.target.value }))
                 }
                 placeholder="eigenaar@restaurant.nl"
-                className="w-full rounded-xl border border-slate-600 bg-slate-700 px-4 py-2.5 text-white placeholder-slate-400 focus:border-indigo-500 focus:outline-none"
+                className={inputClass}
               />
             </div>
 
-            {/* Tafels */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-300">
+              <label className="mb-1 block text-sm font-semibold text-cream-300">
                 Aantal tafels
               </label>
               <input
@@ -297,15 +299,14 @@ function CreateTenantPanel({
                     tableCount: Math.max(1, parseInt(e.target.value) || 1),
                   }))
                 }
-                className="w-full rounded-xl border border-slate-600 bg-slate-700 px-4 py-2.5 text-white focus:border-indigo-500 focus:outline-none"
+                className={inputClass}
               />
             </div>
 
-            {/* Google Place ID */}
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-slate-300">
+              <label className="mb-1 block text-sm font-semibold text-cream-300">
                 Google Place ID{" "}
-                <span className="text-slate-500">(optioneel)</span>
+                <span className="text-cream-500/60">(optioneel)</span>
               </label>
               <input
                 value={form.googlePlaceId}
@@ -313,7 +314,7 @@ function CreateTenantPanel({
                   setForm((f) => ({ ...f, googlePlaceId: e.target.value }))
                 }
                 placeholder="ChIJ..."
-                className="w-full rounded-xl border border-slate-600 bg-slate-700 px-4 py-2.5 text-white placeholder-slate-400 focus:border-indigo-500 focus:outline-none font-mono text-sm"
+                className={`${inputClass} font-mono text-sm`}
               />
             </div>
           </div>
@@ -331,7 +332,7 @@ function CreateTenantPanel({
             <button
               type="submit"
               disabled={submitting}
-              className="rounded-xl bg-indigo-600 px-5 py-2.5 font-semibold text-white transition hover:bg-indigo-700 active:scale-[0.98] disabled:opacity-40"
+              className="rounded-xl bg-hapas-500 px-5 py-2.5 font-bold text-dark-900 transition hover:bg-hapas-400 active:scale-[0.98] disabled:opacity-40 shadow-gold-sm"
             >
               {submitting ? "Aanmaken..." : "Restaurant aanmaken"}
             </button>
@@ -342,7 +343,7 @@ function CreateTenantPanel({
                 setForm(EMPTY_FORM);
                 setError(null);
               }}
-              className="rounded-xl px-5 py-2.5 font-semibold text-slate-400 transition hover:text-white"
+              className="rounded-xl px-5 py-2.5 font-semibold text-cream-500 transition hover:text-cream-200"
             >
               Annuleren
             </button>
@@ -406,21 +407,21 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950">
+    <main className="min-h-screen">
       {/* Header */}
-      <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur-sm">
+      <header className="border-b border-dark-600/30 bg-dark-800/80 backdrop-blur-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div>
-            <h1 className="text-xl font-black text-white">
+            <h1 className="text-xl font-display font-black text-cream-200">
               Bestelsysteem Admin
             </h1>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-cream-500">
               Super-admin dashboard
             </p>
           </div>
           <button
             onClick={handleLogout}
-            className="rounded-xl border border-slate-600 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-red-500 hover:text-red-400"
+            className="rounded-xl border border-dark-600/50 px-4 py-2 text-sm font-semibold text-cream-400 transition hover:border-red-500/50 hover:text-red-400"
           >
             Uitloggen
           </button>
@@ -430,7 +431,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
       <div className="mx-auto max-w-7xl px-6 py-8">
         {/* Error */}
         {error && (
-          <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 px-5 py-3 text-sm text-red-300">
+          <div className="mb-6 rounded-xl border border-red-500/20 bg-red-500/10 px-5 py-3 text-sm text-red-300">
             {error}
             <button
               onClick={fetchData}
@@ -444,8 +445,8 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         {/* Loading */}
         {loading && (
           <div className="flex items-center justify-center py-20">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-            <span className="ml-3 text-slate-400">Laden...</span>
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-hapas-500 border-t-transparent" />
+            <span className="ml-3 text-cream-500">Laden...</span>
           </div>
         )}
 
@@ -475,24 +476,24 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 
             {/* Per-tenant breakdown */}
             {stats.tenantStats.length > 0 && (
-              <div className="mb-8 rounded-2xl border border-slate-700 bg-slate-800/60 p-5">
-                <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-400">
+              <div className="mb-8 rounded-2xl border border-dark-600/30 bg-dark-800 p-5 shadow-card">
+                <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-hapas-500">
                   Commissie per restaurant (vandaag)
                 </h2>
                 <div className="space-y-2">
                   {stats.tenantStats.map((ts) => (
                     <div
                       key={ts.tenantId}
-                      className="flex items-center justify-between rounded-xl bg-slate-700/40 px-4 py-2.5"
+                      className="flex items-center justify-between rounded-xl bg-dark-700/50 px-4 py-2.5"
                     >
                       <div className="flex items-center gap-3">
-                        <span className="font-semibold text-white">
+                        <span className="font-semibold text-cream-200">
                           {ts.tenantName}
                         </span>
                         <StatusBadge status={ts.subscriptionStatus} />
                       </div>
                       <div className="flex items-center gap-6 text-sm">
-                        <span className="text-slate-400">
+                        <span className="text-cream-500">
                           {ts.ordersToday} bestelling
                           {ts.ordersToday !== 1 ? "en" : ""}
                         </span>
@@ -515,24 +516,24 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
             </div>
 
             {/* Tenant list */}
-            <div className="rounded-2xl border border-slate-700 bg-slate-800/60">
-              <div className="border-b border-slate-700 px-6 py-4">
-                <h2 className="text-lg font-bold text-white">Restaurants</h2>
-                <p className="text-sm text-slate-400">
+            <div className="rounded-2xl border border-dark-600/30 bg-dark-800 shadow-card">
+              <div className="border-b border-dark-600/30 px-6 py-4">
+                <h2 className="text-lg font-display font-bold text-cream-200">Restaurants</h2>
+                <p className="text-sm text-cream-500">
                   {tenants.length} restaurant{tenants.length !== 1 ? "s" : ""}{" "}
                   geregistreerd
                 </p>
               </div>
 
               {tenants.length === 0 ? (
-                <div className="px-6 py-12 text-center text-slate-500">
+                <div className="px-6 py-12 text-center text-cream-500">
                   Nog geen restaurants aangemaakt.
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
                     <thead>
-                      <tr className="border-b border-slate-700 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      <tr className="border-b border-dark-600/30 text-xs font-bold uppercase tracking-widest text-hapas-500">
                         <th className="px-6 py-3">Restaurant naam</th>
                         <th className="px-6 py-3">Slug</th>
                         <th className="px-6 py-3">Email</th>
@@ -542,28 +543,28 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                         <th className="px-6 py-3">Acties</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-700/50">
+                    <tbody className="divide-y divide-dark-600/20">
                       {tenants.map((t) => (
                         <tr
                           key={t.id}
-                          className="transition hover:bg-slate-700/30"
+                          className="transition hover:bg-dark-700/30"
                         >
-                          <td className="px-6 py-3 font-semibold text-white">
+                          <td className="px-6 py-3 font-semibold text-cream-200">
                             {t.name}
                           </td>
-                          <td className="px-6 py-3 font-mono text-xs text-slate-400">
+                          <td className="px-6 py-3 font-mono text-xs text-cream-500">
                             {t.slug}
                           </td>
-                          <td className="px-6 py-3 text-slate-300">
+                          <td className="px-6 py-3 text-cream-400">
                             {t.ownerEmail}
                           </td>
-                          <td className="px-6 py-3 text-center text-slate-300">
+                          <td className="px-6 py-3 text-center text-cream-400">
                             {t.tableCount}
                           </td>
                           <td className="px-6 py-3">
                             <StatusBadge status={t.subscriptionStatus} />
                           </td>
-                          <td className="px-6 py-3 text-slate-400">
+                          <td className="px-6 py-3 text-cream-500">
                             {new Date(t.createdAt).toLocaleDateString("nl-NL", {
                               day: "numeric",
                               month: "short",
@@ -575,7 +576,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                               href={`/${t.slug}/manager`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-indigo-400 transition hover:text-indigo-300 hover:underline"
+                              className="text-hapas-400 transition hover:text-hapas-300 hover:underline"
                             >
                               Bekijken
                             </a>

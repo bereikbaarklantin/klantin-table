@@ -11,6 +11,7 @@ import { useBeep, useLive, useNewItemSignal } from "@/components/hooks";
 import OrderTicket from "@/components/staff/OrderTicket";
 import PinGate from "@/components/PinGate";
 import { EmptyState } from "@/components/ui";
+import { Skeleton, ConnectionDot } from "@/components/premium-ui";
 import { store } from "@/lib/store";
 import { Order } from "@/lib/types";
 
@@ -33,13 +34,13 @@ function Column({
 }) {
   return (
     <section className="flex min-w-0 flex-1 flex-col">
-      <h2 className="mb-2 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-stone-500">
+      <h2 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-hapas-500">
         <span>{emoji}</span> {title}
-        <span className="ml-auto rounded-full bg-stone-200 px-2 text-xs font-black text-stone-700">
+        <span className="ml-auto rounded-full bg-dark-700 border border-dark-600/50 px-2.5 py-0.5 text-xs font-black text-cream-300">
           {orders.length}
         </span>
       </h2>
-      <div className="flex flex-col gap-3 overflow-y-auto pb-8">
+      <div className="flex flex-col gap-3 overflow-y-auto pb-8 thin-scrollbar">
         {orders.length === 0 ? (
           <EmptyState emoji="✨" text={empty} />
         ) : (
@@ -64,6 +65,45 @@ function Column({
   );
 }
 
+
+function KitchenSkeleton() {
+  return (
+    <main className="min-h-screen p-4">
+      <header className="mb-4 flex items-center justify-between">
+        <Skeleton className="h-7 w-64" />
+        <Skeleton className="h-9 w-32 rounded-full" />
+      </header>
+      <div className="flex gap-4">
+        {[0, 1, 2].map((col) => (
+          <section key={col} className="flex min-w-0 flex-1 flex-col">
+            <div className="mb-3 flex items-center gap-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="ml-auto h-6 w-8 rounded-full" />
+            </div>
+            <div className="flex flex-col gap-3">
+              {Array.from({ length: col === 0 ? 3 : col === 1 ? 2 : 1 }).map((_, i) => (
+                <div key={i} className="rounded-2xl border border-dark-600/30 bg-dark-800 p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <Skeleton className="h-5 w-28" />
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </div>
+                  {[0, 1].map((j) => (
+                    <div key={j} className="flex items-center justify-between py-1.5">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-4 w-8" />
+                    </div>
+                  ))}
+                  <Skeleton className="mt-3 h-10 w-full rounded-xl" />
+                </div>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    </main>
+  );
+}
+
 function KitchenBoard() {
   const [muted, setMuted] = useState(false);
   const beep = useBeep();
@@ -81,22 +121,30 @@ function KitchenBoard() {
     }
   );
 
+  if (!orders) return <KitchenSkeleton />;
+
   const nieuw = list.filter((o) => o.status === "nieuw");
   const bezig = list.filter((o) => o.status === "in_bereiding");
   const gereed = list.filter((o) => o.status === "gereed");
 
   return (
-    <main className="min-h-screen bg-stone-100 p-4">
+    <main className="min-h-screen p-4">
       <header className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-black">
-          👨‍🍳 Keuken — {nieuw.length + bezig.length} in de rij
+        <h1 className="text-xl font-display font-bold text-cream-200">
+          👨‍🍳 Keuken{" "}
+          <span className="text-hapas-400">
+            — {nieuw.length + bezig.length} in de rij
+          </span>
         </h1>
-        <button
-          onClick={() => setMuted((m) => !m)}
-          className="rounded-full bg-white px-3 py-1.5 text-sm font-semibold shadow-sm"
-        >
-          {muted ? "🔇 Geluid uit" : "🔔 Geluid aan"}
-        </button>
+        <div className="flex items-center gap-3">
+          <ConnectionDot />
+          <button
+            onClick={() => setMuted((m) => !m)}
+            className="rounded-full bg-dark-800 border border-dark-600/50 px-3 py-1.5 text-sm font-semibold text-cream-400 hover:text-cream-200 transition"
+          >
+            {muted ? "🔇 Geluid uit" : "🔔 Geluid aan"}
+          </button>
+        </div>
       </header>
       <div className="flex gap-4">
         <Column

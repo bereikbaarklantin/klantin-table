@@ -13,6 +13,7 @@ import { useBeep, useLive, useNewItemSignal, useNow } from "@/components/hooks";
 import OrderTicket from "@/components/staff/OrderTicket";
 import PinGate from "@/components/PinGate";
 import { Badge, Button, Card, EmptyState, SectionTitle } from "@/components/ui";
+import { ConfirmModal, ToastProvider, useToast, Skeleton, ConnectionDot } from "@/components/premium-ui";
 import { euro, minutesSince, orderTotalCents, timeHM } from "@/lib/format";
 import { store } from "@/lib/store";
 import { RequestKind, Session, VISIT_TYPE_META } from "@/lib/types";
@@ -32,6 +33,8 @@ function TableCard({
   onClosed: () => void;
 }) {
   const now = useNow(15000);
+  const { addToast } = useToast();
+  const [confirmClose, setConfirmClose] = useState(false);
   const { data: orders } = useLive(
     () => store.listOrders({ sessionId: session.id }),
     [session.id],
@@ -41,37 +44,83 @@ function TableCard({
   const meta = VISIT_TYPE_META[session.visitType];
 
   return (
-    <Card>
-      <div className="flex items-center justify-between">
-        <p className="font-black">Tafel {session.tableNumber}</p>
-        <Badge tone={session.status === "awaiting_payment" ? "amber" : "hapas"}>
-          {session.status === "awaiting_payment" ? "wil afrekenen" : meta.label}
-        </Badge>
+    <>
+      <Card>
+        <div className="flex items-center justify-between">
+          <p className="font-black text-cream-200">Tafel {session.tableNumber}</p>
+          <Badge tone={session.status === "awaiting_payment" ? "amber" : "gold"}>
+            {session.status === "awaiting_payment" ? "wil afrekenen" : meta.label}
+          </Badge>
+        </div>
+        <p className="mt-1 text-sm text-cream-500">
+          {session.partySize > 0 ? `${session.partySize} pers. · ` : ""}
+          {minutesSince(session.openedAt, now)} min aan tafel
+          {session.visitType === "diner" ? ` · ronde ${session.roundCount}` : ""}
+        </p>
+        <div className="mt-2 flex items-center justify-between">
+          <p className="font-bold text-hapas-400 tabular-nums">{euro(total)}</p>
+          <Button
+            size="sm"
+            variant={session.status === "awaiting_payment" ? "success" : "secondary"}
+            onClick={() => setConfirmClose(true)}
+          >
+            Afgerekend · sluit tafel
+          </Button>
+        </div>
+      </Card>
+
+      <ConfirmModal
+        open={confirmClose}
+        onClose={() => setConfirmClose(false)}
+        onConfirm={async () => {
+          await store.closeSession(session.id);
+          setConfirmClose(false);
+          addToast(`Tafel ${session.tableNumber} gesloten.`, "success");
+          onClosed();
+        }}
+        title="Tafel sluiten"
+        message={`Tafel ${session.tableNumber} sluiten? (rekening ${euro(total)} is voldaan)`}
+        confirmLabel="Sluiten"
+      />
+    </>
+  );
+}
+
+
+function ServiceSkeleton() {
+  return (
+    <main className="min-h-screen p-4">
+      <header className="mb-4 flex items-center justify-between">
+        <Skeleton className="h-7 w-48" />
+        <Skeleton className="h-9 w-32 rounded-full" />
+      </header>
+      <div className="grid gap-6 lg:grid-cols-3">
+        {[
+          { title: "Drankbestellingen", count: 2 },
+          { title: "Gerechten klaar", count: 2 },
+          { title: "Actieve tafels", count: 3 },
+        ].map((col) => (
+          <div key={col.title}>
+            <Skeleton className="mb-3 h-5 w-48" />
+            <div className="flex flex-col gap-3">
+              {Array.from({ length: col.count }).map((_, i) => (
+                <div key={i} className="rounded-2xl border border-dark-600/30 bg-dark-800 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <Skeleton className="h-5 w-28" />
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </div>
+                  <Skeleton className="h-4 w-40 mb-2" />
+                  <div className="flex items-center justify-between">
+                    <Skeleton className="h-5 w-16" />
+                    <Skeleton className="h-8 w-28 rounded-xl" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
-      <p className="mt-1 text-sm text-stone-500">
-        {session.partySize > 0 ? `${session.partySize} pers. · ` : ""}
-        {minutesSince(session.openedAt, now)} min aan tafel
-        {session.visitType === "diner" ? ` · ronde ${session.roundCount}` : ""}
-      </p>
-      <div className="mt-2 flex items-center justify-between">
-        <p className="font-bold">{euro(total)}</p>
-        <Button
-          size="sm"
-          variant={session.status === "awaiting_payment" ? "success" : "secondary"}
-          onClick={async () => {
-            const ok = confirm(
-              `Tafel ${session.tableNumber} sluiten? (rekening ${euro(total)} is voldaan)`
-            );
-            if (ok) {
-              await store.closeSession(session.id);
-              onClosed();
-            }
-          }}
-        >
-          Afgerekend · sluit tafel
-        </Button>
-      </div>
-    </Card>
+    </main>
   );
 }
 
@@ -118,6 +167,8 @@ function ServiceBoard() {
     }
   );
 
+  if (!barOrders && !kitchenReady && !requests && !sessions) return <ServiceSkeleton />;
+
   const refreshAll = () => {
     refreshBar();
     refreshKitchen();
@@ -126,15 +177,18 @@ function ServiceBoard() {
   };
 
   return (
-    <main className="min-h-screen bg-stone-100 p-4">
+    <main className="min-h-screen p-4">
       <header className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-black">🤵 Bediening</h1>
-        <button
-          onClick={() => setMuted((m) => !m)}
-          className="rounded-full bg-white px-3 py-1.5 text-sm font-semibold shadow-sm"
-        >
-          {muted ? "🔇 Geluid uit" : "🔔 Geluid aan"}
-        </button>
+        <h1 className="text-xl font-display font-bold text-cream-200">🤵 Bediening</h1>
+        <div className="flex items-center gap-3">
+          <ConnectionDot />
+          <button
+            onClick={() => setMuted((m) => !m)}
+            className="rounded-full bg-dark-800 border border-dark-600/50 px-3 py-1.5 text-sm font-semibold text-cream-400 hover:text-cream-200 transition"
+          >
+            {muted ? "🔇 Geluid uit" : "🔔 Geluid aan"}
+          </button>
+        </div>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -192,13 +246,13 @@ function ServiceBoard() {
                 return (
                   <Card key={r.id} className="flex items-center justify-between">
                     <div>
-                      <p className="font-bold">
+                      <p className="font-bold text-cream-200">
                         {meta.emoji} Tafel {r.tableNumber} — {meta.label}
                       </p>
                       {r.note && (
-                        <p className="text-sm text-stone-600">“{r.note}”</p>
+                        <p className="text-sm text-cream-500">&quot;{r.note}&quot;</p>
                       )}
-                      <p className="text-xs text-stone-400">
+                      <p className="text-xs text-cream-500/60">
                         {timeHM(r.createdAt)}
                       </p>
                     </div>
@@ -240,7 +294,9 @@ function ServiceBoard() {
 export default function ServicePage() {
   return (
     <PinGate role="bedieningsscherm">
-      <ServiceBoard />
+      <ToastProvider>
+        <ServiceBoard />
+      </ToastProvider>
     </PinGate>
   );
 }

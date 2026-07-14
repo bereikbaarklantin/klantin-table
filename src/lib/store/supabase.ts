@@ -151,21 +151,72 @@ export class SupabaseAdapter implements DataAPI {
     this.tenantId = tenantId;
   }
 
-  subscribe(onChange: () => void): () => void {
-    try {
-      const channel = this.client.channel(`tenant-${this.tenantId}`);
-      const tables = ["orders", "sessions", "service_requests", "reviews", "products", "settings"];
-      for (const table of tables) {
-        channel.on("postgres_changes", { event: "*", schema: "public", table } as any, onChange);
-      }
-      channel.subscribe();
-      return () => {
-        this.client.removeChannel(channel);
-      };
-    } catch {
-      // Realtime is nice-to-have; fall back to polling only
-      return () => {};
+  private _channel: ReturnType<SupabaseClient["channel"]> | null = null;
+  private _listeners = new Set<() => void>();
+  private _statusListeners = new Set<(s: "connected" | "disconnected" | "connecting") => void>();
+  private _status: "connected" | "disconnected" | "connecting" = "disconnected";
+
+  /** Subscribe to connection status changes. */
+  onStatusChange(cb: (s: "connected" | "disconnected" | "connecting") => void): () => void {
+    this._statusListeners.add(cb);
+    cb(this._status);
+    return () => { this._statusListeners.delete(cb); };
+  }
+
+  get connectionStatus() { return this._status; }
+
+  private _setStatus(s: "connected" | "disconnected" | "connecting") {
+    this._status = s;
+    this._statusListeners.forEach((cb) => cb(s));
+  }
+
+  private _ensureChannel() {
+    if (this._channel) return;
+    const tid = this.tenantId;
+    const channel = this.client.channel(`tenant-${tid}-${Date.now()}`);
+    const tables = ["orders", "sessions", "service_requests", "reviews", "products", "settings"];
+    const notify = () => this._listeners.forEach((cb) => cb());
+
+    for (const table of tables) {
+      channel.on(
+        "postgres_changes",
+        { event: "*", schema: "public", table, filter: `tenant_id=eq.${tid}` } as any,
+        notify
+      );
     }
+
+    channel.subscribe((status: string) => {
+      if (status === "SUBSCRIBED") {
+        this._setStatus("connected");
+      } else if (status === "CLOSED" || status === "CHANNEL_ERROR") {
+        this._setStatus("disconnected");
+        // Auto-reconnect after 3s
+        this._channel = null;
+        if (this._listeners.size > 0) {
+          setTimeout(() => {
+            if (this._listeners.size > 0) this._ensureChannel();
+          }, 3000);
+        }
+      } else {
+        this._setStatus("connecting");
+      }
+    });
+
+    this._channel = channel;
+    this._setStatus("connecting");
+  }
+
+  subscribe(onChange: () => void): () => void {
+    this._listeners.add(onChange);
+    this._ensureChannel();
+    return () => {
+      this._listeners.delete(onChange);
+      if (this._listeners.size === 0 && this._channel) {
+        this.client.removeChannel(this._channel);
+        this._channel = null;
+        this._setStatus("disconnected");
+      }
+    };
   }
 
   // --- Menu ---------------------------------------------------------------
@@ -308,7 +359,18 @@ export class SupabaseAdapter implements DataAPI {
 
   // --- Bestellingen ---------------------------------------------------------
 
+  private _lastOrderKey: string | null = null;
+
   async submitOrder(input: SubmitOrderInput): Promise<SubmitOrderResult> {
+    // Idempotency: prevent duplicate submissions within 5 seconds
+    const itemsHash = JSON.stringify(input.items.map(i => `${i.productId}:${i.qty}`).sort());
+    const orderKey = `${input.sessionId}:${itemsHash}`;
+    if (orderKey === this._lastOrderKey) {
+      return { ok: false, errors: ["Deze bestelling is al verzonden. Wacht even."] };
+    }
+    this._lastOrderKey = orderKey;
+    setTimeout(() => { if (this._lastOrderKey === orderKey) this._lastOrderKey = null; }, 5000);
+
     const session = await this.getSession(input.sessionId);
     if (!session) return { ok: false, errors: ["Sessie niet gevonden."] };
     const menu = await this.getMenu();

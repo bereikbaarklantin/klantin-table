@@ -2,26 +2,123 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Hapas Premium — Dark Theme Foundation ── */
+
 :root {
-  color-scheme: light;
+  color-scheme: dark;
+
+  /* Core palette */
+  --color-bg: #1A1A1A;
+  --color-surface: #2D2D2D;
+  --color-surface-hover: #363636;
+  --color-surface-elevated: #333333;
+  --color-gold: #C4A052;
+  --color-gold-dim: #A88636;
+  --color-gold-bright: #D4AD5C;
+  --color-copper: #B87333;
+  --color-wood: #8B6914;
+
+  /* Text */
+  --color-text: #F5F0E8;
+  --color-text-secondary: #A0978A;
+  --color-text-muted: #6B6560;
+
+  /* Semantic */
+  --color-success: #4CAF50;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --color-info: #60A5FA;
 }
 
 body {
-  @apply bg-hapas-50 text-stone-900 antialiased;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
+/* ── Scrollbar ── */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* Premium thin scrollbar for staff screens */
+.thin-scrollbar::-webkit-scrollbar { width: 4px; }
+.thin-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.thin-scrollbar::-webkit-scrollbar-thumb { background: rgba(196, 160, 82, 0.3); border-radius: 2px; }
+.thin-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(196, 160, 82, 0.5); }
+
+/* ── Animations ── */
 @keyframes pulse-border {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5); }
-  50% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+  50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
 }
-.urgent-pulse {
-  animation: pulse-border 1.5s infinite;
+.urgent-pulse { animation: pulse-border 1.5s infinite; }
+
+@keyframes shimmer-gold {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #2D2D2D 25%, #3a3a3a 50%, #2D2D2D 75%);
+  background-size: 200% 100%;
+  animation: shimmer-gold 1.8s infinite linear;
+}
+
+@keyframes fade-in-up {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up { animation: fade-in-up 0.35s ease-out both; }
+
+@keyframes gold-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(196, 160, 82, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(196, 160, 82, 0); }
+}
+.gold-pulse { animation: gold-pulse 2s infinite; }
+
+/* Staggered children animation */
+.stagger-children > * {
+  animation: fade-in-up 0.3s ease-out both;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 50ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 100ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 150ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 200ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 250ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 300ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 350ms; }
+
+/* ── Glass effect for overlays ── */
+.glass {
+  background: rgba(29, 29, 29, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* ── Gold gradient text ── */
+.text-gold-gradient {
+  background: linear-gradient(135deg, #D4AD5C, #C4A052, #B87333);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Premium divider ── */
+.divider-gold {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(196, 160, 82, 0.3), transparent);
+}
+
+/* ── Focus ring ── */
+*:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Selection ── */
+::selection {
+  background: rgba(196, 160, 82, 0.3);
+  color: #F5F0E8;
 }
