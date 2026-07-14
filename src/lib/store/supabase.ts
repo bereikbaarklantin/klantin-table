@@ -152,18 +152,20 @@ export class SupabaseAdapter implements DataAPI {
   }
 
   subscribe(onChange: () => void): () => void {
-    const channel = this.client
-      .channel(`tenant-${this.tenantId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, onChange)
-      .on("postgres_changes", { event: "*", schema: "public", table: "sessions" }, onChange)
-      .on("postgres_changes", { event: "*", schema: "public", table: "service_requests" }, onChange)
-      .on("postgres_changes", { event: "*", schema: "public", table: "reviews" }, onChange)
-      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, onChange)
-      .on("postgres_changes", { event: "*", schema: "public", table: "settings" }, onChange)
-      .subscribe();
-    return () => {
-      this.client.removeChannel(channel);
-    };
+    try {
+      const channel = this.client.channel(`tenant-${this.tenantId}`);
+      const tables = ["orders", "sessions", "service_requests", "reviews", "products", "settings"];
+      for (const table of tables) {
+        channel.on("postgres_changes", { event: "*", schema: "public", table } as any, onChange);
+      }
+      channel.subscribe();
+      return () => {
+        this.client.removeChannel(channel);
+      };
+    } catch {
+      // Realtime is nice-to-have; fall back to polling only
+      return () => {};
+    }
   }
 
   // --- Menu ---------------------------------------------------------------
