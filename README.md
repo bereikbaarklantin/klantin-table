@@ -1,5 +1,6 @@
 # Hapas — Digitaal Bestelsysteem
 
+
 > Slim digitaal bestelsysteem voor Hapas Noordwijk: gasten bestellen via QR-code, de keuken en bar ontvangen orders realtime, en het serviceteam houdt overzicht.
 
 ---
