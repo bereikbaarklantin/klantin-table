@@ -55,11 +55,14 @@ comment on column tenants.subscription_status is
 -- ============================================================
 
 create table categories (
-  id         uuid          primary key default gen_random_uuid(),
-  tenant_id  uuid          not null references tenants(id),
-  name       text          not null,
-  sort_order int           not null default 0,
-  created_at timestamptz   not null default now()
+  id                     uuid          primary key default gen_random_uuid(),
+  tenant_id              uuid          not null references tenants(id),
+  name                   text          not null,
+  emoji                  text          not null default '🍽️',
+  is_food                boolean       not null default true,
+  counts_toward_minimum  boolean       not null default false,
+  sort_order             int           not null default 0,
+  created_at             timestamptz   not null default now()
 );
 
 create index idx_categories_tenant on categories(tenant_id);
@@ -75,8 +78,14 @@ create table products (
   category_id uuid          not null references categories(id),
   name        text          not null,
   price       numeric(10,2) not null default 0,
+  price_cents int           not null default 0,
+  description text          not null default '',
+  allergens   text[]        not null default '{}',
+  photo_url   text,
+  emoji       text          not null default '🍽️',
   station     order_station not null default 'kitchen',
   active      boolean       not null default true,
+  available   boolean       not null default true,
   sort_order  int           not null default 0,
   created_at  timestamptz   not null default now()
 );
@@ -90,14 +99,20 @@ create index idx_products_category on products(category_id);
 -- ============================================================
 
 create table sessions (
-  id           uuid           primary key default gen_random_uuid(),
-  tenant_id    uuid           not null references tenants(id),
-  table_number int            not null,
-  visit_type   visit_type     not null default 'diner',
-  status       session_status not null default 'open',
-  guest_count  int            not null default 1,
-  created_at   timestamptz    not null default now(),
-  closed_at    timestamptz
+  id                 uuid           primary key default gen_random_uuid(),
+  tenant_id          uuid           not null references tenants(id),
+  table_code         text,
+  table_number       int            not null,
+  visit_type         visit_type     not null default 'diner',
+  status             session_status not null default 'open',
+  guest_count        int            not null default 1,
+  party_size         int            not null default 1,
+  opened_at          timestamptz    not null default now(),
+  created_at         timestamptz    not null default now(),
+  closed_at          timestamptz,
+  round_count        int            not null default 0,
+  last_food_order_at timestamptz,
+  review_done        boolean        not null default false
 );
 
 create index idx_sessions_tenant on sessions(tenant_id);
@@ -109,12 +124,21 @@ create index idx_sessions_status on sessions(status);
 -- ============================================================
 
 create table orders (
-  id         uuid         primary key default gen_random_uuid(),
-  tenant_id  uuid         not null references tenants(id),
-  session_id uuid         not null references sessions(id),
-  round      int          not null default 1,
-  status     order_status not null default 'nieuw',
-  created_at timestamptz  not null default now()
+  id           uuid          primary key default gen_random_uuid(),
+  tenant_id    uuid          not null references tenants(id),
+  session_id   uuid          not null references sessions(id),
+  table_number int           not null default 0,
+  station      order_station not null default 'kitchen',
+  round        int           not null default 1,
+  round_number int,
+  status       order_status  not null default 'nieuw',
+  note         text,
+  party_size   int           not null default 1,
+  visit_type   visit_type    not null default 'diner',
+  items        jsonb         not null default '[]',
+  created_at   timestamptz   not null default now(),
+  ready_at     timestamptz,
+  served_at    timestamptz
 );
 
 create index idx_orders_tenant  on orders(tenant_id);
@@ -146,9 +170,11 @@ create table service_requests (
   id           uuid           primary key default gen_random_uuid(),
   tenant_id    uuid           not null references tenants(id),
   session_id   uuid           not null references sessions(id),
+  table_number int            not null default 0,
   kind         request_kind   not null,
   status       request_status not null default 'open',
   message      text,
+  note         text,
   created_at   timestamptz    not null default now()
 );
 
@@ -161,13 +187,18 @@ create index idx_service_requests_status on service_requests(status);
 -- ============================================================
 
 create table reviews (
-  id         uuid         primary key default gen_random_uuid(),
-  tenant_id  uuid         not null references tenants(id),
-  session_id uuid         not null references sessions(id),
-  rating     int          not null check (rating >= 1 and rating <= 5),
-  comment    text,
-  route      review_route not null default 'intern',
-  created_at timestamptz  not null default now()
+  id           uuid         primary key default gen_random_uuid(),
+  tenant_id    uuid         not null references tenants(id),
+  session_id   uuid         not null references sessions(id),
+  table_number int          not null default 0,
+  rating       int          not null check (rating >= 1 and rating <= 5),
+  stars        int,
+  comment      text,
+  feedback     text,
+  contact      text,
+  route        review_route not null default 'intern',
+  routed       review_route not null default 'intern',
+  created_at   timestamptz  not null default now()
 );
 
 create index idx_reviews_tenant on reviews(tenant_id);
