@@ -120,7 +120,7 @@ function rowToCategory(r: any): Category {
     emoji: r.emoji ?? "\u{1F37D}️",
     isFood: r.is_food,
     countsTowardMinimum: r.counts_toward_minimum,
-    sort: r.sort,
+    sort: r.sort_order,
   };
 }
 
@@ -176,7 +176,7 @@ export class SupabaseAdapter implements DataAPI {
         .from("categories")
         .select("*")
         .eq("tenant_id", this.tenantId)
-        .order("sort"),
+        .order("sort_order"),
       this.client
         .from("products")
         .select("*")
