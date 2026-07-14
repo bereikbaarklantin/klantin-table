@@ -20,16 +20,29 @@ export interface ParsedTableCode {
   full: string; // HAPAS-NW-T12
 }
 
-/** Parseert QR-inhoud zoals "HAPAS-NW-T12". Case-insensitive. */
+/** Parseert QR-inhoud zoals "HAPAS-NW-T12" of "DEMO-T5". Case-insensitive. */
 export function parseTableCode(raw: string): ParsedTableCode | null {
-  const m = /^([A-Z0-9]+)-([A-Z0-9]+)-T(\d{1,3})$/i.exec(raw.trim());
-  if (!m) return null;
-  return {
-    restaurantCode: m[1].toUpperCase(),
-    locationCode: m[2].toUpperCase(),
-    tableNumber: parseInt(m[3], 10),
-    full: `${m[1]}-${m[2]}-T${parseInt(m[3], 10)}`.toUpperCase(),
-  };
+  // Volledige code: HAPAS-NW-T12
+  const full = /^([A-Z0-9]+)-([A-Z0-9]+)-T(\d{1,3})$/i.exec(raw.trim());
+  if (full) {
+    return {
+      restaurantCode: full[1].toUpperCase(),
+      locationCode: full[2].toUpperCase(),
+      tableNumber: parseInt(full[3], 10),
+      full: `${full[1]}-${full[2]}-T${parseInt(full[3], 10)}`.toUpperCase(),
+    };
+  }
+  // Korte code: DEMO-T5
+  const short = /^([A-Z0-9]+)-T(\d{1,3})$/i.exec(raw.trim());
+  if (short) {
+    return {
+      restaurantCode: short[1].toUpperCase(),
+      locationCode: "",
+      tableNumber: parseInt(short[2], 10),
+      full: `${short[1]}-T${parseInt(short[2], 10)}`.toUpperCase(),
+    };
+  }
+  return null;
 }
 
 export interface VisitProfile {
