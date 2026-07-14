@@ -6,7 +6,8 @@
 //   manager kunnen dus naast elkaar gedemood worden)
 // ---------------------------------------------------------------------------
 
-import { CATEGORIES, PRODUCTS } from "../menu";
+import { CATEGORIES as SEED_CATEGORIES, PRODUCTS as SEED_PRODUCTS } from "../menu";
+import { Category, Product } from "../types";
 import { splitByStation, validateSubmission } from "../rules";
 import {
   DEFAULT_SETTINGS,
@@ -20,7 +21,7 @@ import {
   Settings,
   VisitType,
 } from "../types";
-import { computeStats, DataAPI, Menu, SubmitOrderInput, SubmitOrderResult } from "./api";
+import { CategoryInput, computeStats, DataAPI, Menu, ProductInput, SubmitOrderInput, SubmitOrderResult } from "./api";
 
 const LS_KEY = "hapas:demo:v1";
 const CHANNEL = "hapas:demo:events";
@@ -32,6 +33,8 @@ interface DB {
   reviews: Review[];
   settings: Settings;
   unavailable: string[]; // product-ids die 86'd zijn
+  categories?: Category[];
+  products?: Product[];
 }
 
 const emptyDb = (): DB => ({
@@ -102,14 +105,24 @@ class MockAdapter implements DataAPI {
 
   // --- Menu ---------------------------------------------------------------
 
-  async getMenu(): Promise<Menu> {
+  private getCategories(): Category[] {
     const db = this.db();
+    return db.categories && db.categories.length > 0 ? db.categories : [...SEED_CATEGORIES];
+  }
+
+  private getProducts(): Product[] {
+    const db = this.db();
+    const prods = db.products && db.products.length > 0 ? db.products : [...SEED_PRODUCTS];
+    return prods.map((p) => ({
+      ...p,
+      available: !db.unavailable.includes(p.id),
+    }));
+  }
+
+  async getMenu(): Promise<Menu> {
     return {
-      categories: CATEGORIES,
-      products: PRODUCTS.map((p) => ({
-        ...p,
-        available: !db.unavailable.includes(p.id),
-      })),
+      categories: this.getCategories(),
+      products: this.getProducts(),
     };
   }
 
@@ -118,6 +131,94 @@ class MockAdapter implements DataAPI {
     db.unavailable = available
       ? db.unavailable.filter((id) => id !== productId)
       : Array.from(new Set([...db.unavailable, productId]));
+    this.save(db);
+  }
+
+  // --- Menu CRUD -----------------------------------------------------------
+
+  async addCategory(input: CategoryInput): Promise<Category> {
+    const db = this.db();
+    const cats = db.categories && db.categories.length > 0 ? db.categories : [...SEED_CATEGORIES];
+    const cat: Category = {
+      id: uid(),
+      tenantId: "demo",
+      name: input.name,
+      emoji: input.emoji,
+      isFood: input.isFood,
+      countsTowardMinimum: input.countsTowardMinimum,
+      sort: input.sort,
+    };
+    cats.push(cat);
+    db.categories = cats;
+    this.save(db);
+    return cat;
+  }
+
+  async updateCategory(id: string, input: Partial<CategoryInput>): Promise<Category> {
+    const db = this.db();
+    const cats = db.categories && db.categories.length > 0 ? db.categories : [...SEED_CATEGORIES];
+    const idx = cats.findIndex((c) => c.id === id);
+    if (idx === -1) throw new Error("Categorie niet gevonden");
+    if (input.name !== undefined) cats[idx].name = input.name;
+    if (input.emoji !== undefined) cats[idx].emoji = input.emoji;
+    if (input.isFood !== undefined) cats[idx].isFood = input.isFood;
+    if (input.countsTowardMinimum !== undefined) cats[idx].countsTowardMinimum = input.countsTowardMinimum;
+    if (input.sort !== undefined) cats[idx].sort = input.sort;
+    db.categories = cats;
+    this.save(db);
+    return cats[idx];
+  }
+
+  async deleteCategory(id: string): Promise<void> {
+    const db = this.db();
+    const cats = db.categories && db.categories.length > 0 ? db.categories : [...SEED_CATEGORIES];
+    db.categories = cats.filter((c) => c.id !== id);
+    const prods = db.products && db.products.length > 0 ? db.products : [...SEED_PRODUCTS];
+    db.products = prods.filter((p) => p.categoryId !== id);
+    this.save(db);
+  }
+
+  async addProduct(input: ProductInput): Promise<Product> {
+    const db = this.db();
+    const prods = db.products && db.products.length > 0 ? db.products : [...SEED_PRODUCTS];
+    const prod: Product = {
+      id: uid(),
+      tenantId: "demo",
+      categoryId: input.categoryId,
+      name: input.name,
+      description: input.description,
+      priceCents: input.priceCents,
+      allergens: input.allergens,
+      emoji: input.emoji,
+      photoUrl: null,
+      available: true,
+    };
+    prods.push(prod);
+    db.products = prods;
+    this.save(db);
+    return prod;
+  }
+
+  async updateProduct(id: string, input: Partial<ProductInput>): Promise<Product> {
+    const db = this.db();
+    const prods = db.products && db.products.length > 0 ? db.products : [...SEED_PRODUCTS];
+    const idx = prods.findIndex((p) => p.id === id);
+    if (idx === -1) throw new Error("Product niet gevonden");
+    if (input.categoryId !== undefined) prods[idx].categoryId = input.categoryId;
+    if (input.name !== undefined) prods[idx].name = input.name;
+    if (input.description !== undefined) prods[idx].description = input.description;
+    if (input.priceCents !== undefined) prods[idx].priceCents = input.priceCents;
+    if (input.allergens !== undefined) prods[idx].allergens = input.allergens;
+    if (input.emoji !== undefined) prods[idx].emoji = input.emoji;
+    db.products = prods;
+    this.save(db);
+    return prods[idx];
+  }
+
+  async deleteProduct(id: string): Promise<void> {
+    const db = this.db();
+    const prods = db.products && db.products.length > 0 ? db.products : [...SEED_PRODUCTS];
+    db.products = prods.filter((p) => p.id !== id);
     this.save(db);
   }
 

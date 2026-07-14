@@ -38,12 +38,37 @@ export interface SubmitOrderResult {
   orders?: Order[]; // gesplitst per station (keuken/bar)
 }
 
+export interface CategoryInput {
+  name: string;
+  emoji: string;
+  isFood: boolean;
+  countsTowardMinimum: boolean;
+  sort: number;
+}
+
+export interface ProductInput {
+  categoryId: string;
+  name: string;
+  description: string;
+  priceCents: number;
+  allergens: string[];
+  emoji: string;
+}
+
 export interface DataAPI {
   readonly mode: "demo" | "supabase";
 
   // Menu
   getMenu(): Promise<Menu>;
   setProductAvailability(productId: string, available: boolean): Promise<void>;
+
+  // Menu CRUD
+  addCategory(input: CategoryInput): Promise<Category>;
+  updateCategory(id: string, input: Partial<CategoryInput>): Promise<Category>;
+  deleteCategory(id: string): Promise<void>;
+  addProduct(input: ProductInput): Promise<Product>;
+  updateProduct(id: string, input: Partial<ProductInput>): Promise<Product>;
+  deleteProduct(id: string): Promise<void>;
 
   // Sessies
   openSession(args: {

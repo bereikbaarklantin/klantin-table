@@ -23,9 +23,11 @@ import {
   VisitType,
 } from "../types";
 import {
+  CategoryInput,
   computeStats,
   DataAPI,
   Menu,
+  ProductInput,
   SubmitOrderInput,
   SubmitOrderResult,
 } from "./api";
@@ -247,6 +249,105 @@ export class SupabaseAdapter implements DataAPI {
       .from("products")
       .update({ available })
       .eq("id", productId)
+      .eq("tenant_id", this.tenantId);
+    if (error) throw error;
+  }
+
+  // --- Menu CRUD -----------------------------------------------------------
+
+  async addCategory(input: CategoryInput): Promise<Category> {
+    const { data, error } = await this.client
+      .from("categories")
+      .insert({
+        tenant_id: this.tenantId,
+        name: input.name,
+        emoji: input.emoji,
+        is_food: input.isFood,
+        counts_toward_minimum: input.countsTowardMinimum,
+        sort_order: input.sort,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return rowToCategory(data);
+  }
+
+  async updateCategory(id: string, input: Partial<CategoryInput>): Promise<Category> {
+    const patch: Record<string, unknown> = {};
+    if (input.name !== undefined) patch.name = input.name;
+    if (input.emoji !== undefined) patch.emoji = input.emoji;
+    if (input.isFood !== undefined) patch.is_food = input.isFood;
+    if (input.countsTowardMinimum !== undefined) patch.counts_toward_minimum = input.countsTowardMinimum;
+    if (input.sort !== undefined) patch.sort_order = input.sort;
+    const { data, error } = await this.client
+      .from("categories")
+      .update(patch)
+      .eq("id", id)
+      .eq("tenant_id", this.tenantId)
+      .select()
+      .single();
+    if (error) throw error;
+    return rowToCategory(data);
+  }
+
+  async deleteCategory(id: string): Promise<void> {
+    // Delete products in this category first
+    await this.client
+      .from("products")
+      .delete()
+      .eq("category_id", id)
+      .eq("tenant_id", this.tenantId);
+    const { error } = await this.client
+      .from("categories")
+      .delete()
+      .eq("id", id)
+      .eq("tenant_id", this.tenantId);
+    if (error) throw error;
+  }
+
+  async addProduct(input: ProductInput): Promise<Product> {
+    const { data, error } = await this.client
+      .from("products")
+      .insert({
+        tenant_id: this.tenantId,
+        category_id: input.categoryId,
+        name: input.name,
+        description: input.description,
+        price_cents: input.priceCents,
+        allergens: input.allergens,
+        emoji: input.emoji,
+        available: true,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return rowToProduct(data);
+  }
+
+  async updateProduct(id: string, input: Partial<ProductInput>): Promise<Product> {
+    const patch: Record<string, unknown> = {};
+    if (input.categoryId !== undefined) patch.category_id = input.categoryId;
+    if (input.name !== undefined) patch.name = input.name;
+    if (input.description !== undefined) patch.description = input.description;
+    if (input.priceCents !== undefined) patch.price_cents = input.priceCents;
+    if (input.allergens !== undefined) patch.allergens = input.allergens;
+    if (input.emoji !== undefined) patch.emoji = input.emoji;
+    const { data, error } = await this.client
+      .from("products")
+      .update(patch)
+      .eq("id", id)
+      .eq("tenant_id", this.tenantId)
+      .select()
+      .single();
+    if (error) throw error;
+    return rowToProduct(data);
+  }
+
+  async deleteProduct(id: string): Promise<void> {
+    const { error } = await this.client
+      .from("products")
+      .delete()
+      .eq("id", id)
       .eq("tenant_id", this.tenantId);
     if (error) throw error;
   }
