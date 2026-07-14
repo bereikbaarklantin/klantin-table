@@ -48,23 +48,27 @@ export default function GuestPage({ params }: { params: { code: string } }) {
       return;
     }
     (async () => {
-      const storedId =
-        typeof window !== "undefined" ? localStorage.getItem(lsKey) : null;
-      if (storedId) {
-        const s = await store.getSession(storedId);
-        if (s && !(s.status === "closed" && s.reviewDone)) {
-          setSessionId(s.id);
-          setBootstrapped(true);
-          return;
+      try {
+        const storedId =
+          typeof window !== "undefined" ? localStorage.getItem(lsKey) : null;
+        if (storedId) {
+          const s = await store.getSession(storedId);
+          if (s && !(s.status === "closed" && s.reviewDone)) {
+            setSessionId(s.id);
+            return;
+          }
+          localStorage.removeItem(lsKey);
         }
-        localStorage.removeItem(lsKey);
+        const active = await store.getActiveSessionByTable(parsed.full);
+        if (active) {
+          setSessionId(active.id);
+          localStorage.setItem(lsKey, active.id);
+        }
+      } catch (err) {
+        console.error("[bootstrap] Error loading session:", err);
+      } finally {
+        setBootstrapped(true);
       }
-      const active = await store.getActiveSessionByTable(parsed.full);
-      if (active) {
-        setSessionId(active.id);
-        localStorage.setItem(lsKey, active.id);
-      }
-      setBootstrapped(true);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parsed?.full]);
