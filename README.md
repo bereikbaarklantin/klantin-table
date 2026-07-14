@@ -184,3 +184,4 @@ Dit formaat is voorbereid op multi-locatie uitbreiding (bijv. `HAPAS-AMS-T5`).
 **Private / All rights reserved**
 
 Dit project is eigendom van Hapas Noordwijk. Ongeautoriseerd kopiëren, verspreiden of gebruik van deze code is niet toegestaan.
+# Trigger Vercel deployment
